@@ -14,6 +14,12 @@ The unit of measurement is the normalized recovery of the logit difference:
     0.0   patching this node changed nothing (still behaves corrupted)
     1.0   patching this node alone fully restored clean behaviour
 
+Phase 2 adds *path* patching. Activation patching asks what a node does to the
+output through every route at once; path patching asks what it does to one
+specific downstream node, with every other route held shut. That distinction is
+the whole reason Phase 1 could not see components whose contribution reaches the
+logits only by way of another head.
+
 Ablation and iterative pruning — the removal-direction counterparts — belong to a
 later phase and are deliberately not implemented here.
 """
@@ -75,18 +81,32 @@ class Baseline:
         return (patched_logit_diff - self.corrupted_logit_diff) / self.span
 
 
-def clean_cache_for(
-    model: HookedTransformer, ds: IOIDataset, kinds: Sequence[str] = ("z", "resid_pre", "attn_out", "mlp_out")
+def cache_for(
+    model: HookedTransformer, tokens: Tensor, kinds: Sequence[str]
 ) -> tuple[ActivationCache, Tensor]:
-    """Cache the clean-run activations that patching will draw from.
+    """Cache the requested activation kinds for one run.
 
-    Only the requested activation kinds are kept — a full cache of every hook is
-    several times larger for no benefit.
+    Only the requested kinds are kept — a full cache of every hook is several
+    times larger for no benefit.
     """
     wanted = {get_act_name(kind, layer) for kind in kinds for layer in range(model.cfg.n_layers)}
     with torch.no_grad():
-        logits, cache = model.run_with_cache(ds.clean_tokens, names_filter=lambda n: n in wanted)
+        logits, cache = model.run_with_cache(tokens, names_filter=lambda n: n in wanted)
     return cache, logits
+
+
+def clean_cache_for(
+    model: HookedTransformer, ds: IOIDataset, kinds: Sequence[str] = ("z", "resid_pre", "attn_out", "mlp_out")
+) -> tuple[ActivationCache, Tensor]:
+    """Cache the clean-run activations that patching draws from."""
+    return cache_for(model, ds.clean_tokens, kinds)
+
+
+def corrupted_cache_for(
+    model: HookedTransformer, ds: IOIDataset, kinds: Sequence[str] = ("z", "mlp_out")
+) -> tuple[ActivationCache, Tensor]:
+    """Cache the corrupted-run activations that path patching freezes nodes to."""
+    return cache_for(model, ds.corrupted_tokens, kinds)
 
 
 def baseline_for(model: HookedTransformer, ds: IOIDataset) -> tuple[Baseline, Tensor, Tensor]:
@@ -255,3 +275,284 @@ def greedy_select(
         current, distance = best_score, best_distance
 
     return trace
+
+
+# ---------------------------------------------------------------------------
+# Path patching
+# ---------------------------------------------------------------------------
+
+RECEIVER_INPUTS = ("q", "k", "v")
+
+# Sentinel receiver meaning "the output logits themselves". A sender's effect on
+# this receiver is its *direct* effect: what it contributes to the prediction
+# without any other attention head relaying it.
+LOGITS = "logits"
+
+
+@dataclass(frozen=True)
+class Receiver:
+    """A head input that a path terminates at — head `layer.head`'s q, k or v."""
+
+    layer: int
+    head: int
+    position: str
+    input: str
+
+    def __post_init__(self) -> None:
+        if self.input not in RECEIVER_INPUTS:
+            raise ValueError(f"input must be one of {RECEIVER_INPUTS}, got {self.input!r}")
+
+    @property
+    def hook_name(self) -> str:
+        return get_act_name(self.input, self.layer)
+
+    def __str__(self) -> str:
+        return f"{self.layer}.{self.head}.{self.input}@{self.position}"
+
+
+def _freeze_hooks(
+    model: HookedTransformer,
+    ds: IOIDataset,
+    clean_cache: ActivationCache,
+    corrupted_cache: ActivationCache,
+    sender: Patch,
+    freeze_mlps: bool,
+) -> list[tuple[str, Callable]]:
+    """Hooks for the third pass: every head pinned to corrupted, the sender to clean.
+
+    Pinning all other heads is what makes the measurement a *path* measurement.
+    Without it, the sender's change would propagate through downstream heads and
+    we would be back to measuring total effect.
+
+    MLPs are recomputed rather than pinned, following the paper: it treats
+    attention heads as the nodes of the circuit and lets MLPs carry a path
+    between them. `freeze_mlps=True` blocks that route too, which is a stricter
+    notion of "direct" and is available so the choice can be measured instead of
+    assumed.
+    """
+    rows = torch.arange(len(ds), device=ds.clean_tokens.device)
+    sender_pos = ds.positions[sender.position]
+    hooks: list[tuple[str, Callable]] = []
+
+    def make_z_hook(layer: int) -> Callable:
+        def hook(activation: Tensor, hook) -> Tensor:  # noqa: ANN001
+            activation[:] = corrupted_cache[hook.name]
+            if layer == sender.layer:
+                clean = clean_cache[hook.name]
+                activation[rows, sender_pos, sender.head] = clean[rows, sender_pos, sender.head]
+            return activation
+
+        return hook
+
+    for layer in range(model.cfg.n_layers):
+        hooks.append((get_act_name("z", layer), make_z_hook(layer)))
+
+    if freeze_mlps:
+        def mlp_hook(activation: Tensor, hook) -> Tensor:  # noqa: ANN001
+            activation[:] = corrupted_cache[hook.name]
+            return activation
+
+        for layer in range(model.cfg.n_layers):
+            hooks.append((get_act_name("mlp_out", layer), mlp_hook))
+
+    return hooks
+
+
+def path_patch(
+    model: HookedTransformer,
+    ds: IOIDataset,
+    clean_cache: ActivationCache,
+    corrupted_cache: ActivationCache,
+    baseline: Baseline,
+    sender: Patch,
+    receivers: Sequence[Receiver] | str = LOGITS,
+    freeze_mlps: bool = False,
+) -> float:
+    """Normalized recovery carried by the direct path from `sender` to `receivers`.
+
+    Implements the scheme from Wang et al. (2022), in the denoising direction used
+    throughout this project (base run corrupted, clean values spliced in):
+
+    1. Cache the clean run and the corrupted run (done once by the caller).
+    2. Run on the corrupted prompts with every attention head pinned to its
+       corrupted value except the sender, which is set to its clean value, and
+       record what the receivers now see. Because everything else is pinned, the
+       only thing that can have changed at a receiver is what reached it straight
+       from the sender.
+    3. Run the corrupted prompts again, unpinned, with the receivers set to the
+       values recorded in step 2, and measure the logit difference.
+
+    With `receivers=LOGITS` there is no step 3: pinning every other head already
+    isolates the sender's direct contribution to the prediction.
+
+    A sender at or above a receiver's layer cannot reach it, and returns 0.0
+    without running anything.
+    """
+    if receivers != LOGITS:
+        if not receivers:
+            raise ValueError("receivers must be non-empty, or the LOGITS sentinel")
+        if all(sender.layer >= r.layer for r in receivers):
+            return 0.0  # nothing downstream to reach
+
+    freeze = _freeze_hooks(model, ds, clean_cache, corrupted_cache, sender, freeze_mlps)
+
+    if receivers == LOGITS:
+        with torch.no_grad():
+            logits = model.run_with_hooks(ds.corrupted_tokens, fwd_hooks=freeze)
+        return baseline.normalize(ds.logit_diff(logits).item())
+
+    # Step 2: record what the receivers see while every other route is shut.
+    grouped: dict[str, list[Receiver]] = {}
+    for receiver in receivers:
+        grouped.setdefault(receiver.hook_name, []).append(receiver)
+
+    recorded: dict[str, Tensor] = {}
+
+    def make_save_hook() -> Callable:
+        def hook(activation: Tensor, hook) -> Tensor:  # noqa: ANN001
+            recorded[hook.name] = activation.detach().clone()
+            return activation
+
+        return hook
+
+    with torch.no_grad():
+        model.run_with_hooks(
+            ds.corrupted_tokens,
+            fwd_hooks=freeze + [(name, make_save_hook()) for name in grouped],
+        )
+
+    # Step 3: replay the corrupted run with only those receiver inputs replaced.
+    rows = torch.arange(len(ds), device=ds.clean_tokens.device)
+
+    def make_apply_hook(specs: Sequence[Receiver]) -> Callable:
+        def hook(activation: Tensor, hook) -> Tensor:  # noqa: ANN001
+            saved = recorded[hook.name]
+            for spec in specs:
+                pos = ds.positions[spec.position]
+                activation[rows, pos, spec.head] = saved[rows, pos, spec.head]
+            return activation
+
+        return hook
+
+    with torch.no_grad():
+        logits = model.run_with_hooks(
+            ds.corrupted_tokens,
+            fwd_hooks=[(name, make_apply_hook(specs)) for name, specs in grouped.items()],
+        )
+    return baseline.normalize(ds.logit_diff(logits).item())
+
+
+def path_signal(
+    model: HookedTransformer,
+    ds: IOIDataset,
+    clean_cache: ActivationCache,
+    corrupted_cache: ActivationCache,
+    sender: Patch,
+    receivers: Sequence[Receiver],
+    freeze_mlps: bool = False,
+) -> float:
+    """How much of the receiver's clean-vs-corrupted difference this path delivers.
+
+    `path_patch` scores a path by what it does to the output logits, which asks a
+    lot of an early link in a long chain: even a path that carries its signal
+    perfectly may not move the prediction while every later stage is still
+    running on corrupted input. This measures the path at its own endpoint
+    instead.
+
+    The receiver's activation is projected onto the corrupted -> clean direction:
+
+        0.0   the path delivered nothing; the receiver sees its corrupted input
+        1.0   the path delivered the entire difference on its own
+
+    A path can score high here and near zero on `path_patch`. That combination is
+    informative rather than contradictory — it says the connection exists but the
+    logit-difference metric cannot see it — and distinguishing the two is the
+    whole point of measuring both.
+
+    Requires both caches to contain the receivers' q/k/v hooks.
+    """
+    if not receivers:
+        raise ValueError("receivers must be non-empty")
+    if all(sender.layer >= r.layer for r in receivers):
+        return 0.0
+
+    grouped: dict[str, list[Receiver]] = {}
+    for receiver in receivers:
+        grouped.setdefault(receiver.hook_name, []).append(receiver)
+
+    recorded: dict[str, Tensor] = {}
+
+    def save_hook(activation: Tensor, hook) -> Tensor:  # noqa: ANN001
+        recorded[hook.name] = activation.detach().clone()
+        return activation
+
+    freeze = _freeze_hooks(model, ds, clean_cache, corrupted_cache, sender, freeze_mlps)
+    with torch.no_grad():
+        model.run_with_hooks(
+            ds.corrupted_tokens, fwd_hooks=freeze + [(name, save_hook) for name in grouped]
+        )
+
+    rows = torch.arange(len(ds), device=ds.clean_tokens.device)
+    numerator = torch.zeros((), device=rows.device)
+    denominator = torch.zeros((), device=rows.device)
+    for name, specs in grouped.items():
+        for spec in specs:
+            pos = ds.positions[spec.position]
+            patched = recorded[name][rows, pos, spec.head]
+            clean = clean_cache[name][rows, pos, spec.head]
+            corrupted = corrupted_cache[name][rows, pos, spec.head]
+            direction = clean - corrupted
+            numerator += ((patched - corrupted) * direction).sum()
+            denominator += (direction * direction).sum()
+
+    if denominator.item() == 0.0:
+        # Clean and corrupted are identical at the receiver: the question is
+        # undefined rather than answered zero.
+        return float("nan")
+    return (numerator / denominator).item()
+
+
+def sweep_path_senders(
+    model: HookedTransformer,
+    ds: IOIDataset,
+    clean_cache: ActivationCache,
+    corrupted_cache: ActivationCache,
+    baseline: Baseline,
+    receivers: Sequence[Receiver] | str,
+    sender_position: str,
+    freeze_mlps: bool = False,
+    progress: Callable[[int, int], None] | None = None,
+) -> Tensor:
+    """Path-patch every head into a fixed set of receivers.
+
+    Returns an (n_layers, n_heads) tensor of normalized recoveries.
+
+    The sender is swept exhaustively while the receivers are fixed. That asymmetry
+    is deliberate: fixing the receivers is what makes the question specific, and
+    sweeping the senders is what keeps the answer a discovery rather than a
+    confirmation of the heads we already expected.
+
+    `sender_position` must equal the receivers' position. A head's q, k and v at
+    token position p are computed from the residual stream at p alone, so only
+    writes at p can reach them — a sender at any other position has no path here.
+
+    Senders at or above the *earliest* receiver's layer are left as NaN rather than
+    measured. Such a sender can reach some receivers and not others, so its score
+    would be an effect on a smaller receiver set than everyone else's and would not
+    be comparable with the rest of the sweep. NaN marks "not a well-posed question
+    here", which a zero would have silently misreported as "no effect".
+    """
+    out = torch.full((model.cfg.n_layers, model.cfg.n_heads), float("nan"))
+    ceiling = model.cfg.n_layers if receivers == LOGITS else min(r.layer for r in receivers)
+    total = ceiling * model.cfg.n_heads
+    done = 0
+    for layer in range(ceiling):
+        for head in range(model.cfg.n_heads):
+            sender = Patch(layer=layer, kind="z", position=sender_position, head=head)
+            out[layer, head] = path_patch(
+                model, ds, clean_cache, corrupted_cache, baseline, sender, receivers, freeze_mlps
+            )
+            done += 1
+            if progress is not None:
+                progress(done, total)
+    return out

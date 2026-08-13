@@ -66,6 +66,47 @@ The second corruption scheme was added specifically to see past limit 2, and it 
 
 **What this earns:** the method demonstrably finds real, published circuit components rather than plausible-looking noise, and its failures are predictable from its construction. It has not earned the right to be pointed at an unknown circuit yet — path patching is the prerequisite, and that is Phase 2.
 
+## Phase 2 — result
+
+**The head count did not move. The mechanism and the precision did.**
+
+Phase 1 predicted that path patching would recover the classes it missed. Tested directly, that prediction was **wrong**: path patching recovers 19/26 on its own, and combined with Phase 1 the total stays at **20/26** — the same six heads are still missing. That is reported as a failed prediction rather than folded away.
+
+Full numbers: **[results/PHASE2_REPORT.md](results/PHASE2_REPORT.md)**.
+
+Two things did improve, and neither shows up in a head count.
+
+**Precision.** Path patching pins every other attention head to its corrupted value, so only the chosen route can carry signal. That strips out most of what total-effect patching swept up incidentally:
+
+| | heads discovered | in circuit | precision |
+|---|---|---|---|
+| Phase 1 (activation patching) | 28 | 20 | 0.71 |
+| Phase 2 (path patching) | 21 | 19 | **0.90** |
+| Phase 2, `abc` scheme alone | 14 | 14 | **1.00** |
+
+**The wiring, not just the parts.** Phase 1 produced a ranked list of heads. Phase 2 recovered the paper's causal *order*, without being given it. Each round's receivers are the heads discovered in the round before — the answer key is never consulted to choose them:
+
+| round | question | top senders found | published class |
+|---|---|---|---|
+| 0 | what moves the logits directly? | 9.9, 10.7, 9.6, 11.10 | name mover / negative name mover |
+| 1 | what feeds *those* heads' queries at END? | **8.6, 8.10, 7.9, 7.3** | S-inhibition — all four |
+| 2 | what feeds *those* heads' values at S2? | **5.5, 3.0, 6.9, 5.9** | induction + duplicate token |
+
+Round 1 returned all four published S-inhibition heads as its top four senders, from a sweep of all 144. Recovering the wiring is a stronger claim than recovering the component list, and it is the claim Phase 1 could not make at all.
+
+### Previous token heads: measured, not dropped
+
+Phase 1 recorded 0/2 and blamed the corruption scheme. That excuse is now tested. Neither scheme can settle it alone — under `s2_swap` the S1+1 position is bit-identical between runs, and under `abc` the chain dies before producing receivers — so the probe takes each half from where it is sound: receivers discovered by the `s2_swap` chain, measured on `abc`.
+
+| head | effect on logits | signal delivered to receiver |
+|---|---|---|
+| 2.2 | +0.0003 | **+0.197** |
+| 4.11 | +0.0003 | **+0.361** |
+
+**The two measurements disagree, and the disagreement is the finding.** Both heads deliver a fifth to a third of the receiver's entire clean-vs-corrupted difference — the path is there and carries signal — while moving the output logit difference by essentially nothing. The deeper a link sits in the chain, the more of its effect is absorbed before reaching the output.
+
+So logit-difference path patching is the wrong instrument for these heads, rather than the heads being absent. Fixing that needs a metric defined at the receiver instead of at the output — a change of measurement, not of method. It is left for a later phase, and **the previous-token heads are counted as misses in every table above**: adopting the more favourable metric after seeing that it scores better is how a validation exercise stops validating anything.
+
 ## Stack
 
 - **Python** 3.12
@@ -74,7 +115,9 @@ The second corruption scheme was added specifically to see past limit 2, and it 
 
 ## Status
 
-**Phase 1 built and run.** Activation patching is implemented and validated against the published IOI circuit; see the result above. Ablation and iterative pruning are not implemented, and neither is path patching — that is the next phase, and the Phase 1 result is the argument for why it comes before any autonomous discovery.
+**Phases 1 and 2 built and run.** Activation patching and path patching are both implemented and validated against the published IOI circuit; see the results above. Standing at 20/26 published heads, with the paper's causal ordering reproduced.
+
+Not implemented: ablation, iterative pruning, and a receiver-side metric — the last of these is what the Phase 2 previous-token result argues for, and it is the concrete next step. No autonomous discovery until then; the point of Phase 2 was that a confident prediction from Phase 1 turned out to be wrong when tested, which is exactly the failure mode an unvalidated system pointed at an unknown circuit would produce silently.
 
 ## Setup
 
@@ -126,11 +169,12 @@ python scripts/check_patching.py     # expect: PATCHING OK
 Then the full pipeline. It downloads GPT-2 small on first run and takes about 6 minutes on a laptop RTX 5060:
 
 ```bash
-python scripts/run_phase1_ioi.py             # ~6 min, writes results/
+python scripts/run_phase1_ioi.py             # ~6 min, activation patching
+python scripts/run_phase2_paths.py           # ~4 min, path patching
 python scripts/run_phase1_ioi.py --quick     # ~2 min smoke test
 ```
 
-It regenerates everything in `results/`: the report, the JSON behind it, and per-head CSVs. The run is seeded, so it reproduces exactly.
+Each regenerates its own report, the JSON behind it, and per-head CSVs in `results/`. Both runs are seeded, so they reproduce exactly. Phase 2 reads `results/phase1_results.json` to build the combined comparison, so run Phase 1 first on a clean checkout.
 
 ## Layout
 
@@ -138,18 +182,19 @@ It regenerates everything in `results/`: the report, the JSON behind it, and per
 causal_interp/
   model.py           # model loading, device selection
   ioi.py             # IOI task: prompt pairs, corruption schemes, position indices
-  interventions.py   # activation patching, sweeps, greedy circuit narrowing
+  interventions.py   # activation patching, path patching, sweeps, circuit narrowing
   comparison.py      # scoring a discovered head set against ground truth
   ground_truth.py    # the published IOI circuit — inert data, never derived from a run
 scripts/
   check_env.py       # environment + CUDA verification
-  check_patching.py  # known-answer tests for the patching machinery
-  run_phase1_ioi.py  # Phase 1 end to end -> results/
+  check_patching.py  # known-answer tests for both patching methods
+  run_phase1_ioi.py  # Phase 1: activation patching -> results/
+  run_phase2_paths.py # Phase 2: iterative path patching -> results/
 results/
-  PHASE1_REPORT.md   # the comparison against Wang et al. (the deliverable)
-  phase1_results.json
-  head_effects_*.csv
-  component_effects_*.csv
+  PHASE1_REPORT.md   # activation-patching comparison against Wang et al.
+  PHASE2_REPORT.md   # path-patching comparison, and the combined result
+  phase1_results.json / phase2_results.json
+  head_effects_*.csv / component_effects_*.csv / path_effects_*.csv
 ```
 
 The separation between `ground_truth.py` and `comparison.py` is deliberate: the published circuit is hard-coded and the scoring is pure set arithmetic over it, so nothing measured in a run can influence what counts as a match.

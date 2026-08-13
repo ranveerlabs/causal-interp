@@ -26,10 +26,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from causal_interp import ground_truth
 from causal_interp.interventions import (
     ALL_POSITIONS,
+    LOGITS,
     Patch,
+    Receiver,
     baseline_for,
     clean_cache_for,
+    corrupted_cache_for,
     patch_effect,
+    path_patch,
 )
 from causal_interp.ioi import IOIDataset
 from causal_interp.model import load
@@ -115,6 +119,50 @@ def main() -> int:
         for head in range(model.cfg.n_heads)
     ]
     c.check("all 144 heads @ ALL restores clean behaviour", patch_effect(model, ds, cache, all_heads, baseline), 1.0, 0.05)
+
+    # -- path patching ------------------------------------------------------
+
+    corrupted_cache, _ = corrupted_cache_for(model, ds)
+    last = model.cfg.n_layers - 1
+
+    print("\npath patching: a sender cannot reach a receiver at or below its own layer")
+    for sender_layer, receiver_layer in ((5, 5), (9, 4)):
+        effect = path_patch(
+            model, ds, cache, corrupted_cache, baseline,
+            sender=Patch(sender_layer, "z", "END", 0),
+            receivers=[Receiver(layer=receiver_layer, head=0, position="END", input="q")],
+        )
+        c.check(f"path {sender_layer}.0 -> {receiver_layer}.0.q", effect, 0.0, 1e-9)
+
+    print("\npath patching: s2_swap positions before S2 are exact zeros here too")
+    for position in PRE_S2_POSITIONS:
+        effect = path_patch(
+            model, ds, cache, corrupted_cache, baseline,
+            sender=Patch(0, "z", position, 1), receivers=LOGITS,
+        )
+        c.check(f"direct effect of 0.1 @ {position}", effect, 0.0, 1e-9)
+
+    print(f"\npath patching: a layer-{last} sender has no downstream head to relay through,")
+    print("so its direct effect must equal its plain activation-patching effect exactly")
+    for head in range(model.cfg.n_heads):
+        direct = path_patch(
+            model, ds, cache, corrupted_cache, baseline,
+            sender=Patch(last, "z", "END", head), receivers=LOGITS,
+        )
+        total = patch_effect(model, ds, cache, [Patch(last, "z", "END", head)], baseline)
+        c.check(f"{last}.{head} direct == total", direct, total, 1e-5)
+
+    print("\npath patching: an earlier head does have relays, so the two differ")
+    nm_direct = path_patch(
+        model, ds, cache, corrupted_cache, baseline,
+        sender=Patch(7, "z", "END", 9), receivers=LOGITS,
+    )
+    nm_total = patch_effect(model, ds, cache, [Patch(7, "z", "END", 9)], baseline)
+    c.assert_true(
+        "7.9 (s-inhibition) direct effect is far below its total effect",
+        abs(nm_direct) < abs(nm_total) / 2,
+        f"direct {nm_direct:+.4f} vs total {nm_total:+.4f}",
+    )
 
     print("\n" + ("PATCHING OK" if not c.failures else f"{c.failures} CHECK(S) FAILED"))
     return 0 if not c.failures else 1
