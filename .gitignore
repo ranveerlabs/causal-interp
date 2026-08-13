@@ -16,8 +16,9 @@ venv/
 *.pt
 *.safetensors
 
-# Experiment outputs
-results/
+# Experiment outputs. results/ is deliberately tracked: the Phase 1 report and
+# the CSVs behind it are the deliverable, and a validation claim nobody can see
+# the numbers for is not worth much. Scratch runs go in runs/.
 runs/
 *.log
 
