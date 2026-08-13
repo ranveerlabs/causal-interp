@@ -1,0 +1,7 @@
+# PyTorch must come from the CUDA 12.8 index. The default PyPI wheel is
+# CPU-only on Windows, and Blackwell GPUs (sm_120, RTX 50-series) have no
+# compiled kernels in pre-12.8 builds — they silently fall back to CPU.
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+torch==2.11.0+cu128
+transformer_lens==3.7.1
