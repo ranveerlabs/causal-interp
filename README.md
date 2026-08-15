@@ -11,10 +11,11 @@ Validating the method against GPT-2 small's IOI circuit, published in Wang et al
 | [1](#phase-1--activation-patching) | activation patching | **20/26** — recovers every class acting directly on the output, misses every class acting through another head |
 | [2](#phase-2--path-patching) | path patching | **20/26** — Phase 1's prediction that this would close the gap was **wrong**; precision 0.71 → 0.90, and the paper's causal *ordering* recovered |
 | [3](#phase-3--a-pre-registered-receiver-side-criterion) | pre-registered receiver-side criterion | recovers **2 of the 6** still-missing heads (both previous-token), at precision 0.64 — a *different* definition of "found", reported beside the first rather than merged |
+| [4](#phase-4--searching-for-receiver-specifications) | search for receiver specifications | **16 of 17** scoreable specifications recovered without being told them — and the unlabelled search finds the same token positions the labelled one uses |
 
 Across both definitions of "found", 22 of the 26 published heads have been recovered by something. That figure spans two criteria that disagree about which heads count, and [Phase 3 explains why they are not added together](#why-the-scores-are-not-added-together) — it is not one method's recall.
 
-**Not implemented:** ablation, iterative pruning, and — the real barrier — any search over *receiver specifications*. Every result so far depended on being told which head input, at which position, to interrogate. That is [the line between guided rediscovery and autonomous discovery](#the-boundary-this-project-has-not-crossed), and it is the concrete next problem.
+**Not implemented:** ablation, iterative pruning, and — now the largest remaining gap — any construction of the *task and its counterfactual*. Phase 4 removed the need to be told which head input at which position to interrogate; the templates, the corruption schemes and the metric are all still designed by hand from knowledge of what the model is doing.
 
 ## Goal
 
@@ -146,7 +147,61 @@ A head can deliver its content to the next stage of the circuit and still leave 
 
 Every round in Phases 2 and 3 was told *where to look* — that S-inhibition acts on name movers' queries, that duplicate-token information arrives as a value at S2, that induction keys live at S1+1. Those come from the paper's account of the mechanism. Which heads turned up was never constrained; the question asked of them was.
 
-So everything so far is **guided rediscovery**: given the right question, the method finds the right components, in the right causal order. The autonomous loop described above has to generate the questions too. On a circuit nobody has published there is no paper to supply the receiver inputs, so a method that needs them supplied does not yet transfer — and unlike every phase so far, there would be no answer key to check the search against.
+So everything up to here is **guided rediscovery**: given the right question, the method finds the right components, in the right causal order. The autonomous loop described above has to generate the questions too. On a circuit nobody has published there is no paper to supply the receiver inputs, so a method that needs them supplied does not yet transfer — and unlike every phase so far, there would be no answer key to check the search against.
+
+That is the boundary Phase 4 set out to cross.
+
+## Phase 4 — searching for receiver specifications
+
+**The search does not need to be told where to look.** Full numbers: **[results/PHASE4_REPORT.md](results/PHASE4_REPORT.md)**; the space and budget were fixed in **[results/PHASE4_SEARCH_SPACE.md](results/PHASE4_SEARCH_SPACE.md)**, committed before the search code was written.
+
+Every receiver specification `(layer, head, input, position)` is scored by splicing that one input, at that one position, from the clean run into the corrupted one — one forward pass each, so the grid is searched exhaustively. `causal_interp/search.py` does not import `ground_truth`, and the run asserts that before starting.
+
+Two screens were run, and only the second tests autonomy:
+
+- **semantic** — 3024 specs over positions labelled IO / S1 / S2 / END. Comparable with earlier phases, but those labels already encode which name is the indirect object.
+- **absolute** — 6912 specs over bare token indices `t0…t15`, single template, single name order, no semantic labels at all.
+
+### Does it find the published specification?
+
+| outcome | count | |
+|---|---|---|
+| agreement — published spec ranks first | **16** | ✅ |
+| ambiguous | 0 | |
+| unmeasurable under this corruption scheme | 4 | ⊘ |
+| genuine disagreement | 1 | ✗ |
+
+Of the **17 specifications the search could actually weigh, it recovered 16.** All four S-inhibition heads returned `v@S2`, and every name mover, backup and negative name mover returned `q@END` — the paper's answer, arrived at without the paper.
+
+**The 4 "unmeasurable" are not failures of the search.** For the induction heads the published spec is `k@S1+1`, and under `s2_swap` *all 432 specifications at S1+1 score exactly zero* — the position is bit-identical between the clean and corrupted runs. The search never weighed `k@S1+1` and preferred something else; it was handed a counterfactual that cannot see that position. This is Phase 1's structural blindness (576/576 exact zeros before S2) arriving again in a new guise. Counting them as search failures would blame the search for a defect belonging to the corruption scheme.
+
+### The position labels turned out to be unnecessary
+
+The unlabelled search concentrates on the same two token indices the labelled search uses:
+
+| search | top positions in its own top 50 |
+|---|---|
+| semantic | `S2` ×32, `END` ×16, `S2+1` ×2 |
+| absolute | `t11` ×33, `t15` ×15, `t12` ×2 |
+
+`t11` turns out to be S2 and `t15` turns out to be END — labels attached *after* the search, purely to read its output. Given only bare indices, the search independently located the two positions where the task's information lives.
+
+### Stage B: the wiring falls out again
+
+Sweeping senders into the specifications the *search* chose — not ones supplied — reproduces the paper's structure a second time:
+
+```
+9.9.q@END  ←  8.6 (+0.41), 8.10 (+0.25), 7.9 (+0.20)   — S-inhibition into name mover queries
+8.6.v@S2   ←  5.5 (+0.39), 6.9 (+0.11), 3.0 (+0.11)    — induction + duplicate token into S-inhibition values
+```
+
+### Is autonomous discovery realistic with this approach?
+
+**Partly, and the remaining gap is now a different one.** Phase 4 closed the receiver-specification gap: that part of the mechanism no longer has to be supplied. Three things still stand between this and autonomy, and they are named plainly in the report:
+
+1. **The screen is a logit-effect screen**, so it inherits the exact blind spot Phase 3 documented — links that carry signal without moving the output are invisible to it by construction.
+2. **The task, the counterfactual and the metric are still hand-built** from knowledge of what the model does. This is now the largest gap, and it is larger than the one this phase closed.
+3. **There is no answer key on an unfamiliar circuit.** The search emits a ranking either way; nothing in the ranking distinguishes the case where it is right from the case where it is wrong. No published specification landed in the ambiguous band here, which is a better outcome than the alternative — but that is a property of this task at this sample size, not a guarantee, and the method still has no calibrated notion of when its own ranking is uninformative.
 
 ---
 
@@ -210,7 +265,10 @@ python scripts/run_phase1_ioi.py                        # ~6 min, activation pat
 python scripts/run_phase2_paths.py                      # ~4 min, path patching
 python scripts/run_phase3_receiver.py --preregister     # ~2 min, fix the threshold
 python scripts/run_phase3_receiver.py                   # ~2 min, apply it
+python scripts/run_phase4_search.py                     # ~31 min, receiver-spec search
 ```
+
+Phase 4 is by far the longest — it is two exhaustive grids, 9,936 forward passes. `--report-only` rebuilds its report from the stored CSVs without repeating the sweep.
 
 Each regenerates its own report, the JSON behind it, and per-head CSVs in `results/`. All runs are seeded, so they reproduce exactly. The phases chain — Phase 2 reads `phase1_results.json`, Phase 3 reads `phase2_results.json` — so run them in order on a clean checkout.
 
@@ -224,6 +282,7 @@ causal_interp/
   ioi.py             # IOI task: prompt pairs, corruption schemes, position indices
   interventions.py   # activation patching, path patching, sweeps, circuit narrowing
   comparison.py      # scoring a discovered head set against ground truth
+  search.py          # Phase 4 receiver-spec search — must never import ground_truth
   ground_truth.py    # the published IOI circuit — inert data, never derived from a run
 scripts/
   check_env.py            # environment + CUDA verification
@@ -232,14 +291,18 @@ scripts/
   run_phase2_paths.py     # Phase 2: iterative path patching -> results/
   run_phase3_receiver.py  # Phase 3: --preregister fixes the threshold; main run applies it
   phase3_analysis.py      # Phase 3 comparison + report, imported only by the main run
+  run_phase4_search.py    # Phase 4: exhaustive receiver-spec search -> results/
+  phase4_report.py        # Phase 4 report, kept out of the search module
 results/
-  PHASE1_REPORT.md / PHASE2_REPORT.md / PHASE3_REPORT.md
+  PHASE1_REPORT.md / PHASE2_REPORT.md / PHASE3_REPORT.md / PHASE4_REPORT.md
+  PHASE4_SEARCH_SPACE.md       # the space and budget, committed before the search code
   phase3_preregistration.json  # the threshold, committed before the results existed
-  phase1_results.json / phase2_results.json / phase3_results.json
-  head_effects_*.csv / component_effects_*.csv / path_effects_*.csv / receiver_signals.csv
+  phase1_results.json / phase2_results.json / phase3_results.json / phase4_results.json
+  head_effects_*.csv / component_effects_*.csv / path_effects_*.csv
+  receiver_signals.csv / receiver_search_*.csv
 ```
 
-Two separations are deliberate. `ground_truth.py` holds the published circuit as inert data and `comparison.py` scores against it with pure set arithmetic, so nothing measured in a run can influence what counts as a match. And `phase3_analysis.py` is a separate module so the `--preregister` path cannot import it: the step that fixes the threshold has no access to the code that computes a real measurement.
+Three separations are deliberate, and each one makes a claim checkable rather than promised. `ground_truth.py` holds the published circuit as inert data while `comparison.py` scores against it with pure set arithmetic, so nothing measured in a run can influence what counts as a match. `phase3_analysis.py` is a separate module so the `--preregister` path cannot import it. And `search.py` must never import `ground_truth` — Phase 4 asserts this at startup, because a search that can see the answer key is not a search.
 
 ## License
 
