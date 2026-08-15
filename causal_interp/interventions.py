@@ -40,6 +40,10 @@ from causal_interp.ioi import IOIDataset
 # bound on a node's total effect regardless of where it acts.
 ALL_POSITIONS = "ALL"
 
+# Activation kinds stored per attention head, shaped (batch, pos, head, d_head).
+# A patch on one of these needs a head index; anything else is whole-layer.
+HEAD_KINDS = ("z", "q", "k", "v")
+
 
 @dataclass(frozen=True)
 class Patch:
@@ -152,8 +156,10 @@ def run_patched(
     """Run the corrupted prompts with `patches` spliced in, returning logits."""
     grouped: dict[str, list[Patch]] = {}
     for patch in patches:
-        if (patch.kind == "z") != (patch.head is not None):
-            raise ValueError(f"'head' must be set for kind='z' and unset otherwise: {patch}")
+        if (patch.kind in HEAD_KINDS) != (patch.head is not None):
+            raise ValueError(
+                f"'head' must be set for head-shaped kinds {HEAD_KINDS} and unset otherwise: {patch}"
+            )
         grouped.setdefault(patch.hook_name, []).append(patch)
 
     fwd_hooks = [(name, _make_hook(specs, ds, cache)) for name, specs in grouped.items()]
