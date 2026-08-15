@@ -58,6 +58,34 @@ CLASS_EXPECTED_POSITION: dict[str, str] = {
 }
 
 
+# The receiver specification the paper names for each class: the head input, and
+# the position, at which that class *receives* the circuit's information.
+#
+# Only three classes have one. The paper describes S-inhibition heads acting on
+# name movers' queries, duplicate-token and induction output arriving as
+# S-inhibition values at S2, and previous-token output arriving as induction keys
+# at S1+1. The remaining classes are described by what they send, not by what they
+# receive, so there is no published answer to check a search against — and a
+# search that returns something for them is unfalsifiable here rather than right.
+CLASS_RECEIVER_SPEC: dict[str, tuple[str, str] | None] = {
+    "name mover": ("q", "END"),
+    "backup name mover": ("q", "END"),
+    "negative name mover": ("q", "END"),
+    "s-inhibition": ("v", "S2"),
+    "induction": ("k", "S1+1"),
+    "duplicate token": None,
+    "previous token": None,
+}
+
+assert set(CLASS_RECEIVER_SPEC) == set(IOI_CIRCUIT), "receiver specs must cover every class"
+
+
+def receiver_spec(head: Head) -> tuple[str, str] | None:
+    """The published (input, position) this head receives on, or None if unspecified."""
+    cls = classify(head)
+    return CLASS_RECEIVER_SPEC.get(cls) if cls else None
+
+
 def classify(head: Head) -> str | None:
     """Return the published class of `head`, or None if it is not in the circuit."""
     return HEAD_TO_CLASS.get(head)

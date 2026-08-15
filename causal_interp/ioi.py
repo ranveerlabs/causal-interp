@@ -103,6 +103,8 @@ class IOIDataset:
         n: int = 128,
         corruption: str = "s2_swap",
         seed: int = 0,
+        templates: tuple[str, ...] | None = None,
+        orders: tuple[str, ...] = ("ABB", "BAB"),
     ) -> None:
         if corruption not in CORRUPTIONS:
             raise ValueError(f"corruption must be one of {CORRUPTIONS}, got {corruption!r}")
@@ -110,6 +112,18 @@ class IOIDataset:
         self.corruption = corruption
         self.seed = seed
         self.model = model
+        # Restricting to one template makes every prompt the same length, which is
+        # what lets a search index tokens by absolute position and have index k mean
+        # the same thing in every row.
+        self.templates = templates or TEMPLATES
+        # Both name orders are used by default so no result can be explained by a
+        # fixed "the answer is the second name" heuristic. Pinning a single order
+        # is only for the absolute-position search, where the two orders put the
+        # indirect object and the subject at *swapped* token indices — averaging
+        # over them would make a bare index mean two different things at once.
+        if not set(orders) <= {"ABB", "BAB"}:
+            raise ValueError(f"orders must be drawn from ABB/BAB, got {orders}")
+        self.orders = orders
 
         names = self._single_token_names(model)
         # Two independent streams so that the clean prompts are identical across
@@ -159,10 +173,8 @@ class IOIDataset:
     def _make_prompt(
         self, rng: random.Random, corrupt_rng: random.Random, names: list[str], i: int
     ) -> IOIPrompt:
-        template = TEMPLATES[i % len(TEMPLATES)]
-        # Alternate the two name orders so the analysis cannot be explained by a
-        # fixed "the answer is the second name" positional heuristic.
-        order = "ABB" if i % 2 == 0 else "BAB"
+        template = self.templates[i % len(self.templates)]
+        order = self.orders[i % len(self.orders)]
 
         io_name, s_name = rng.sample(names, 2)
         a, b = (s_name, io_name) if order == "ABB" else (io_name, s_name)
