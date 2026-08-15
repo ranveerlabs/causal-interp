@@ -344,14 +344,117 @@ def _write_report(
             ", ".join(f"`{l}.{h}`" for l, h in survivors) or "—",
         ])
     a(_table(rows, ["receiver group", "null max", "per-group threshold", "clears it"]))
-    a("\n\nWhere a head clears the pooled threshold but not its own group's, that is worth ")
-    a("knowing, and it is why both numbers are on record.\n")
+
+    # Which discoveries actually depend on pooling, computed rather than left to the
+    # reader to work out from the table.
+    per_group_survivors: set[Head] = set()
+    for entry in prereg["per_group"]:
+        if entry["group_threshold"] is None:
+            continue
+        group = next((g for g in per_group if g["label"] == entry["label"]), None)
+        if group:
+            per_group_survivors |= {
+                h for h, v in group["_signals"].items() if abs(v) >= entry["group_threshold"]
+            }
+    pooled_only = sorted(cmp_signal.discovered - per_group_survivors)
+    a("\n\n")
+    if pooled_only:
+        listed = ", ".join(
+            f"`{l}.{h}`" + (f" ({classify((l, h))})" if classify((l, h)) else "")
+            for l, h in pooled_only
+        )
+        a(f"**Depends on pooling:** {listed} clears the pooled threshold but not its own group's. ")
+        a("Those discoveries should be read as weaker than the rest.\n")
+        pooled_only_published = [h for h in pooled_only if classify(h)]
+        if pooled_only_published:
+            a("\nSome are published heads, so part of the recall above does rest on the more ")
+            a("lenient bar: " + ", ".join(f"`{l}.{h}`" for l, h in pooled_only_published) + ".\n")
+        else:
+            a("\nNone of them is a published head. The lenience pooling introduces produced false ")
+            a("positives and none of the recoveries, so every published head found above also ")
+            a("clears its own group's stricter bar.\n")
+    else:
+        a("**Nothing depends on pooling.** Every head the pooled threshold discovers also clears ")
+        a("its own group's stricter bar, so the lenience pooling introduces did not manufacture ")
+        a("any of the results above.\n")
 
     a("\n## 6. Two limitations carried forward, not fixed\n")
     a(_limitations(phase2, per_group, threshold))
+
+    a("\n## 7. What this phase settled\n")
+    a(_conclusions(cmp_logit, cmp_logit_r1, cmp_signal, previously_missing, signal_by_head, threshold))
     a("\n")
 
     path.write_text("".join(out), encoding="utf-8")
+
+
+def _conclusions(cmp_logit, cmp_logit_r1, cmp_signal, previously_missing, signal_by_head, threshold) -> str:
+    recovered = [
+        h for h in previously_missing
+        if signal_by_head.get(h) is not None and abs(signal_by_head[h]) >= threshold
+    ]
+    unmeasurable = [h for h in previously_missing if signal_by_head.get(h) is None]
+    below = [
+        h for h in previously_missing
+        if signal_by_head.get(h) is not None and abs(signal_by_head[h]) < threshold
+    ]
+    lines = []
+
+    if recovered:
+        listed = ", ".join(f"`{l}.{h}` ({classify((l, h))})" for l, h in recovered)
+        lines.append(
+            f"The pre-registered criterion recovers {len(recovered)} of the "
+            f"{len(previously_missing)} heads neither earlier phase found: {listed}. The threshold "
+            "was fixed before the measurement and not touched afterwards.\n"
+        )
+    else:
+        lines.append(
+            f"The pre-registered criterion recovers none of the {len(previously_missing)} heads "
+            "neither earlier phase found. The threshold was fixed before the measurement and is "
+            "reported as it fell.\n"
+        )
+    if below:
+        listed = ", ".join(
+            f"`{head[0]}.{head[1]}` ({classify(head)}, {signal_by_head[head]:+.3f})"
+            for head in below
+        )
+        lines.append(f"\nBelow the bar and not rescued: {listed}.\n")
+    if unmeasurable:
+        listed = ", ".join(f"`{l}.{h}`" for l, h in unmeasurable)
+        lines.append(
+            f"\nOutside the criterion's scope entirely: {listed} — these sit above every receiver "
+            "layer available in rounds 1 and later, so no path into the swept receivers reaches "
+            "them. Not measured and found wanting; not measured at all.\n"
+        )
+
+    lines.append(
+        f"\n**The criterion is noisier than the one it sits beside.** Precision "
+        f"{cmp_signal.precision:.2f} against {cmp_logit.precision:.2f} for the logit criterion. "
+        "It finds the previous-token heads and it also admits several heads with no published "
+        "role. Both facts are properties of the same fixed threshold and neither is reported "
+        "without the other.\n"
+    )
+
+    lines.append(
+        "\n**The two criteria are not ranked, and the scores are not merged.** On the like-for-like "
+        f"comparison — same rounds, same receivers, same paths — the logit criterion finds "
+        f"{len(cmp_logit_r1.matches)}/26 and the receiver-side criterion {len(cmp_signal.matches)}/26, "
+        "but they disagree about *which* heads, not merely how many: previous-token heads appear "
+        "only in the second, several induction and name-mover heads only in the first. Adding them "
+        "into a single recall number would report a larger figure while destroying the only "
+        "genuinely new information this phase produced.\n"
+    )
+
+    lines.append(
+        "\n**What the disagreement means.** A head can deliver its content to the next stage of the "
+        "circuit and still leave the prediction unmoved, and the two criteria simply take opposite "
+        "views of whether that counts as being part of the circuit. Neither view is wrong. Which "
+        "one is appropriate depends on the question: explaining a behaviour argues for the output "
+        "criterion, mapping a mechanism argues for the receiver-side one. Phases 1 and 2 answered "
+        "only the first while appearing to answer both, and making that visible — rather than "
+        "raising a number — is what this phase was for.\n"
+    )
+    return "".join(lines)
 
 
 def _limitations(phase2: dict, per_group: list[dict], threshold: float) -> str:

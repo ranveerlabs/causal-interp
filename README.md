@@ -107,6 +107,62 @@ Phase 1 recorded 0/2 and blamed the corruption scheme. That excuse is now tested
 
 So logit-difference path patching is the wrong instrument for these heads, rather than the heads being absent. Fixing that needs a metric defined at the receiver instead of at the output — a change of measurement, not of method. It is left for a later phase, and **the previous-token heads are counted as misses in every table above**: adopting the more favourable metric after seeing that it scores better is how a validation exercise stops validating anything.
 
+## Phase 3 — result
+
+**Two definitions of "found", reported side by side. Not merged, and not ranked.**
+
+Phase 2 ended by naming the receiver-side measure as the obvious next step — and by warning that it had been *observed* to score the missing heads well, which is exactly what makes adopting it dangerous. Phase 3 does it under pre-registration.
+
+Full numbers: **[results/PHASE3_REPORT.md](results/PHASE3_REPORT.md)**.
+
+### The threshold was fixed before the measurement
+
+The rule, not the number, was committed:
+
+> threshold = 99th percentile of `|path_signal|` under a shuffled-source null, rounded up to two significant figures
+
+The null runs the identical procedure but draws the sender's clean value from a *different prompt*. The value carried is a real activation; only its correspondence to the prompt is destroyed. Whatever projection survives is what the method manufactures from nothing. That fixes the false-positive rate at ~1% in advance — the role Phase 1's 0.02 played.
+
+It produced **0.11**. Worth noting the null is heavy-tailed — median 0.0006 but 99th percentile 0.105 — so simply inheriting 0.02 would have carried a large false-positive rate on this quantity.
+
+The pre-registration is committed in [`b039915`](../../commit/b039915), a commit containing the threshold and all the code and **no results**. The ordering is checkable in git history rather than asserted here.
+
+**It is not a blind pre-registration, and the report says so.** Phase 2 published real `path_signal` values for the previous-token heads before this rule was written. The narrower claim is that the number was produced by a fixed rule rather than selected, and was not adjusted afterwards.
+
+### What the criterion found
+
+| published class | logit (all rounds) | logit (rounds 1+) | receiver-side (≥ 0.11) |
+|---|---|---|---|
+| name mover | 3/3 | 0/3 | 0/3 |
+| backup name mover | 6/8 | 0/8 | 0/8 |
+| negative name mover | 2/2 | 0/2 | 0/2 |
+| S-inhibition | 4/4 | 4/4 | 3/4 |
+| induction | 3/4 | 3/4 | 1/4 |
+| duplicate token | 1/3 | 1/3 | 1/3 |
+| previous token | **0/2** | **0/2** | **2/2** |
+| **total** | 19/26 | 8/26 | 7/26 |
+| precision | 0.90 | 0.80 | **0.64** |
+
+The middle column is the like-for-like one — same rounds, same receivers, same paths, scored by effect on the output instead of delivery to the receiver. Round 0 is out of the receiver-side criterion's scope by construction: its receiver *is* the output, where the two measures are the same quantity.
+
+Of the six heads neither earlier phase found, the criterion recovers **two — 2.2 and 4.11, both previous-token heads**, the class that scored 0/2 in both prior phases. It does not rescue `0.10` (+0.042) or `5.8` (+0.008), and `9.0`/`11.9` are outside its scope entirely — not measured and found wanting, not measured at all.
+
+**The criterion is noisier than the one it sits beside**: precision 0.64 against 0.90. It finds the previous-token heads and also admits several heads with no published role. Both are properties of the same fixed threshold.
+
+**Robustness.** Per-group thresholds were fixed by the same rule at the same time. Only `3.7` and `4.3` depend on the more lenient pooled bar — and neither is a published head. Every published head found also clears its own group's stricter bar, so pooling produced false positives and none of the recoveries.
+
+### Why the scores are not added together
+
+On the like-for-like comparison the two criteria find 8/26 and 7/26, but they disagree about *which* heads, not merely how many — previous-token heads appear only in the second, several induction and name-mover heads only in the first. Merging them would report a larger number while destroying the only new information the phase produced.
+
+A head can deliver its content to the next stage of the circuit and still leave the prediction unmoved. The two criteria take opposite views on whether that counts as being part of the circuit, and neither is wrong: explaining a behaviour argues for the output criterion, mapping a mechanism argues for the receiver-side one. **Phases 1 and 2 answered only the first while appearing to answer both.** Making that visible, rather than raising a number, is what this phase was for.
+
+### The boundary this project has not crossed
+
+Every round in Phases 2 and 3 was told *where to look* — that S-inhibition acts on name movers' queries, that duplicate-token information arrives as a value at S2, that induction keys live at S1+1. Those come from the paper's account of the mechanism. Which heads turned up was never constrained; the question asked of them was.
+
+So everything so far is **guided rediscovery**: given the right question, the method finds the right components, in the right causal order. The autonomous loop this README describes has to generate the questions too. On a circuit nobody has published there is no paper to supply the receiver inputs, so a method that needs them supplied does not yet transfer — and unlike every phase so far, there would be no answer key to check the search against.
+
 ## Stack
 
 - **Python** 3.12
@@ -115,9 +171,11 @@ So logit-difference path patching is the wrong instrument for these heads, rathe
 
 ## Status
 
-**Phases 1 and 2 built and run.** Activation patching and path patching are both implemented and validated against the published IOI circuit; see the results above. Standing at 20/26 published heads, with the paper's causal ordering reproduced.
+**Phases 1–3 built and run.** Activation patching, path patching, and a pre-registered receiver-side criterion, all validated against the published IOI circuit. On the output criterion the project stands at 20/26 published heads with the paper's causal ordering reproduced; the receiver-side criterion finds a partly different set, including the two previous-token heads the output criterion cannot reach.
 
-Not implemented: ablation, iterative pruning, and a receiver-side metric — the last of these is what the Phase 2 previous-token result argues for, and it is the concrete next step. No autonomous discovery until then; the point of Phase 2 was that a confident prediction from Phase 1 turned out to be wrong when tested, which is exactly the failure mode an unvalidated system pointed at an unknown circuit would produce silently.
+Not implemented: ablation, iterative pruning, and — the real barrier — any search over *receiver specifications*. Every result so far depends on being told which head input, at which position, to ask about. That is the line between guided rediscovery and the autonomous loop described above, and it is the concrete next problem.
+
+No autonomous discovery until then. Phase 2 exists because a confident prediction from Phase 1 turned out to be wrong when tested, and Phase 3 exists because the fix Phase 2 proposed had already been seen to flatter the result. Both are the failure modes an unvalidated system pointed at an unknown circuit would produce silently.
 
 ## Setup
 
@@ -169,12 +227,15 @@ python scripts/check_patching.py     # expect: PATCHING OK
 Then the full pipeline. It downloads GPT-2 small on first run and takes about 6 minutes on a laptop RTX 5060:
 
 ```bash
-python scripts/run_phase1_ioi.py             # ~6 min, activation patching
-python scripts/run_phase2_paths.py           # ~4 min, path patching
-python scripts/run_phase1_ioi.py --quick     # ~2 min smoke test
+python scripts/run_phase1_ioi.py                        # ~6 min, activation patching
+python scripts/run_phase2_paths.py                      # ~4 min, path patching
+python scripts/run_phase3_receiver.py --preregister     # ~2 min, fix the threshold
+python scripts/run_phase3_receiver.py                   # ~2 min, apply it
 ```
 
-Each regenerates its own report, the JSON behind it, and per-head CSVs in `results/`. Both runs are seeded, so they reproduce exactly. Phase 2 reads `results/phase1_results.json` to build the combined comparison, so run Phase 1 first on a clean checkout.
+Each regenerates its own report, the JSON behind it, and per-head CSVs in `results/`. All runs are seeded, so they reproduce exactly. The phases chain — Phase 2 reads `phase1_results.json`, Phase 3 reads `phase2_results.json` — so run them in order on a clean checkout.
+
+Phase 3 refuses to run without a recorded threshold, and rejects one calibrated at a different `n` or seed. That is deliberate: the point of the pre-registration is that the threshold cannot be adjusted once results exist.
 
 ## Layout
 
@@ -190,12 +251,18 @@ scripts/
   check_patching.py  # known-answer tests for both patching methods
   run_phase1_ioi.py  # Phase 1: activation patching -> results/
   run_phase2_paths.py # Phase 2: iterative path patching -> results/
+  run_phase3_receiver.py # Phase 3: --preregister fixes the threshold; main run applies it
+  phase3_analysis.py # Phase 3 comparison + report, imported only by the main run
 results/
   PHASE1_REPORT.md   # activation-patching comparison against Wang et al.
   PHASE2_REPORT.md   # path-patching comparison, and the combined result
-  phase1_results.json / phase2_results.json
-  head_effects_*.csv / component_effects_*.csv / path_effects_*.csv
+  PHASE3_REPORT.md   # the two criteria side by side
+  phase3_preregistration.json  # the threshold, committed before the results existed
+  phase1_results.json / phase2_results.json / phase3_results.json
+  head_effects_*.csv / component_effects_*.csv / path_effects_*.csv / receiver_signals.csv
 ```
+
+`phase3_analysis.py` is a separate module so the `--preregister` path cannot import it: the step that fixes the threshold has no access to the code that computes a real measurement.
 
 The separation between `ground_truth.py` and `comparison.py` is deliberate: the published circuit is hard-coded and the scoring is pure set arithmetic over it, so nothing measured in a run can influence what counts as a match.
 
