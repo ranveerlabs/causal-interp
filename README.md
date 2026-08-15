@@ -2,6 +2,20 @@
 
 An autonomous system for discovering and **causally validating** computational mechanisms in neural networks.
 
+## Where this stands
+
+Validating the method against GPT-2 small's IOI circuit, published in Wang et al. (2022), [*Interpretability in the Wild*](https://arxiv.org/abs/2211.00593) — 26 attention heads in 7 classes, so there is a known answer to check against.
+
+| phase | method | result |
+|---|---|---|
+| [1](#phase-1--activation-patching) | activation patching | **20/26** — recovers every class acting directly on the output, misses every class acting through another head |
+| [2](#phase-2--path-patching) | path patching | **20/26** — Phase 1's prediction that this would close the gap was **wrong**; precision 0.71 → 0.90, and the paper's causal *ordering* recovered |
+| [3](#phase-3--a-pre-registered-receiver-side-criterion) | pre-registered receiver-side criterion | recovers **2 of the 6** still-missing heads (both previous-token), at precision 0.64 — a *different* definition of "found", reported beside the first rather than merged |
+
+Across both definitions of "found", 22 of the 26 published heads have been recovered by something. That figure spans two criteria that disagree about which heads count, and [Phase 3 explains why they are not added together](#why-the-scores-are-not-added-together) — it is not one method's recall.
+
+**Not implemented:** ablation, iterative pruning, and — the real barrier — any search over *receiver specifications*. Every result so far depended on being told which head input, at which position, to interrogate. That is [the line between guided rediscovery and autonomous discovery](#the-boundary-this-project-has-not-crossed), and it is the concrete next problem.
+
 ## Goal
 
 Most interpretability tooling traces and visualizes: it shows which components light up when a model does something. That produces suggestive pictures, but not claims you can be wrong about.
@@ -9,6 +23,7 @@ Most interpretability tooling traces and visualizes: it shows which components l
 This project aims at the stronger thing. The system forms hypotheses about the mechanism behind a behaviour, then tests them by intervening on the model and observing whether the behaviour actually changes:
 
 - **Activation patching** — splice activations from a clean run into a corrupted one to isolate which nodes carry the causal signal.
+- **Path patching** — hold every other route shut, so a node's effect on one specific downstream node can be measured on its own.
 - **Iterative circuit pruning** — strip away components that carry no causal weight, until what remains is a minimal subgraph that still reproduces the behaviour.
 
 The output is a **falsifiable causal claim** — "this circuit implements this behaviour, and here is the intervention that would break it" — not an attention heatmap. The loop from hypothesis to experiment to revised hypothesis is meant to run autonomously.
@@ -17,21 +32,21 @@ The output is a **falsifiable causal claim** — "this circuit implements this b
 
 The eventual target is scalable oversight: applying this to models *more capable than the people and systems investigating them*, where no human has the ground truth to check the answer against.
 
-That ambition is exactly why Phase 1 does not start there. Pointing an unvalidated system at an unfamiliar model produces conclusions nobody can check — the system could be confidently wrong and there would be no way to tell.
+That ambition is exactly why the work does not start there. Pointing an unvalidated system at an unfamiliar model produces conclusions nobody can check — the system could be confidently wrong and there would be no way to tell.
 
-So Phase 1 runs the system against a small open model with an **already-published circuit** — GPT-2 small's IOI (indirect object identification) circuit, documented in Wang et al. (2022), [*Interpretability in the Wild*](https://arxiv.org/abs/2211.00593), which means there is a known answer. The question Phase 1 has to settle is narrow and concrete:
+So every phase so far runs against a small open model with an **already-published circuit**, where the question is narrow and concrete:
 
-> Do the system's autonomous conclusions match the published ground truth?
+> Do the system's conclusions match the published ground truth?
 
-Only once the method demonstrably rediscovers what is already known does it earn the right to be pointed at anything unfamiliar.
+Only once the method demonstrably rediscovers what is already known does it earn the right to be pointed at anything unfamiliar. Two phases have already failed a prediction they made about themselves, which is the argument for keeping the answer key in reach a while longer.
 
-## Phase 1 — result
+---
 
-**Partial reproduction. Not a pass.** Activation patching recovers the parts of the published circuit that act directly on the output, and misses the parts that act indirectly. The miss is systematic and has an identifiable cause, which is the useful finding.
+## Phase 1 — activation patching
 
-Full numbers: **[results/PHASE1_REPORT.md](results/PHASE1_REPORT.md)**.
+**Partial reproduction. Not a pass.** Full numbers: **[results/PHASE1_REPORT.md](results/PHASE1_REPORT.md)**.
 
-The run patches every one of GPT-2 small's 144 attention heads at each of 7 semantic token positions, over 128 prompts from 8 templates, under two independent corruption schemes, and scores the result against the paper's 26 heads.
+Every one of the 144 attention heads patched at each of 7 semantic token positions, over 128 prompts from 8 templates, under two corruption schemes.
 
 | published class | acts on | recovered | |
 |---|---|---|---|
@@ -44,47 +59,33 @@ The run patches every one of GPT-2 small's 144 attention heads at each of 7 sema
 | previous token | other heads | **0/2** | ✗ |
 | **total** | | **20/26** | |
 
-Recovery is the union of both corruption schemes; the primary scheme alone gives 18/26. The cutoff was fixed before the results were looked at, and the report shows the full sensitivity sweep around it rather than one flattering choice. Under the primary scheme at a slightly stricter cutoff, **precision reaches 1.00** — the 18 highest-effect heads in the model are all published circuit members, with no false positives.
+The split is the whole result: **every class acting directly on the output logits is fully recovered, and every class that falls short acts indirectly.** Under the primary scheme at a slightly stricter cutoff, precision reaches **1.00** — the 18 highest-effect heads in the model are all published circuit members.
 
-The split in that table is the whole result: **every class that acts directly on the output logits is fully recovered, and every class that falls short acts indirectly**, feeding other heads rather than the prediction.
-
-Narrowing to a circuit that works *jointly* rather than head-by-head, six nodes restore clean behaviour completely (recovery 1.000), and all six are published circuit members:
+Narrowing to a circuit that works *jointly* rather than head-by-head, six nodes restore clean behaviour completely, and all six are published members:
 
 ```
 5.5@S2 (induction) → 8.10@END → 7.9@END → 8.6@END → 7.3@END (S-inhibition) → 3.0@S2 (duplicate token)
 ```
 
-### Why the misses happen
+**Why the misses happen** — three structural causes, not tuning failures: activation patching measures total effect where the paper used path patching; the primary corruption scheme is provably blind before the S2 token (**576/576** head-position cells there are exact floating-point zeros, measured not assumed); and marginal single-head patching is the condition under which redundant backup heads look least important.
 
-That the shortfall lands entirely on the indirect classes is not a tuning failure. Three causes, each structural:
+## Phase 2 — path patching
 
-1. **Activation patching is not path patching.** The paper derived its circuit with path patching, which measures a component's effect along a specific downstream route. Plain activation patching measures total effect on the output, so a head whose entire contribution is routed through another head can be invisible here while genuinely belonging to the circuit.
-2. **The primary corruption scheme is provably blind before the S2 token.** It changes exactly one token, so activations at every earlier position are bit-identical between the clean and corrupted runs. Measured, not assumed: **576/576** head-position cells before S2 come out as exact floating-point zeros. Previous-token heads act at S1+1 and cannot be detected by this scheme even in principle.
-3. **Marginal effects understate redundant components.** Backup name movers exist precisely to activate when the primary name movers are removed — patching one head at a time, with everything else intact, is the condition under which they look least important.
+**The head count did not move. The mechanism and the precision did.** Full numbers: **[results/PHASE2_REPORT.md](results/PHASE2_REPORT.md)**.
 
-The second corruption scheme was added specifically to see past limit 2, and it does surface early-layer structure — but its extra detections are layer-0 heads sitting on name tokens that the corruption itself replaced, which restores *which name is written there* rather than any IOI mechanism. The report flags these as artifacts rather than counting them as discoveries.
+Phase 1 predicted path patching would recover the classes it missed. Tested directly, that prediction was **wrong**: 19/26 alone, and combined with Phase 1 still **20/26** — the same six heads missing. Reported as a failed prediction rather than folded away.
 
-**What this earns:** the method demonstrably finds real, published circuit components rather than plausible-looking noise, and its failures are predictable from its construction. It has not earned the right to be pointed at an unknown circuit yet — path patching is the prerequisite, and that is Phase 2.
+Two things did improve, neither visible in a head count.
 
-## Phase 2 — result
+**Precision**, from pinning every other head to its corrupted value so only the chosen route carries signal:
 
-**The head count did not move. The mechanism and the precision did.**
-
-Phase 1 predicted that path patching would recover the classes it missed. Tested directly, that prediction was **wrong**: path patching recovers 19/26 on its own, and combined with Phase 1 the total stays at **20/26** — the same six heads are still missing. That is reported as a failed prediction rather than folded away.
-
-Full numbers: **[results/PHASE2_REPORT.md](results/PHASE2_REPORT.md)**.
-
-Two things did improve, and neither shows up in a head count.
-
-**Precision.** Path patching pins every other attention head to its corrupted value, so only the chosen route can carry signal. That strips out most of what total-effect patching swept up incidentally:
-
-| | heads discovered | in circuit | precision |
+| | discovered | in circuit | precision |
 |---|---|---|---|
-| Phase 1 (activation patching) | 28 | 20 | 0.71 |
-| Phase 2 (path patching) | 21 | 19 | **0.90** |
+| Phase 1 | 28 | 20 | 0.71 |
+| Phase 2 | 21 | 19 | **0.90** |
 | Phase 2, `abc` scheme alone | 14 | 14 | **1.00** |
 
-**The wiring, not just the parts.** Phase 1 produced a ranked list of heads. Phase 2 recovered the paper's causal *order*, without being given it. Each round's receivers are the heads discovered in the round before — the answer key is never consulted to choose them:
+**The wiring, not just the parts.** Each round's receivers are the heads discovered in the round before — the answer key is never consulted to choose them — and the chain recovered the paper's causal order unprompted:
 
 | round | question | top senders found | published class |
 |---|---|---|---|
@@ -92,44 +93,30 @@ Two things did improve, and neither shows up in a head count.
 | 1 | what feeds *those* heads' queries at END? | **8.6, 8.10, 7.9, 7.3** | S-inhibition — all four |
 | 2 | what feeds *those* heads' values at S2? | **5.5, 3.0, 6.9, 5.9** | induction + duplicate token |
 
-Round 1 returned all four published S-inhibition heads as its top four senders, from a sweep of all 144. Recovering the wiring is a stronger claim than recovering the component list, and it is the claim Phase 1 could not make at all.
+Round 1 returned all four published S-inhibition heads as its top four, from a sweep of all 144.
 
-### Previous token heads: measured, not dropped
-
-Phase 1 recorded 0/2 and blamed the corruption scheme. That excuse is now tested. Neither scheme can settle it alone — under `s2_swap` the S1+1 position is bit-identical between runs, and under `abc` the chain dies before producing receivers — so the probe takes each half from where it is sound: receivers discovered by the `s2_swap` chain, measured on `abc`.
+**Previous token heads: measured, not dropped.** A dedicated probe — receivers from the `s2_swap` chain, measured on `abc`, run at every achievable sender ceiling — gives:
 
 | head | effect on logits | signal delivered to receiver |
 |---|---|---|
 | 2.2 | +0.0003 | **+0.197** |
 | 4.11 | +0.0003 | **+0.361** |
 
-**The two measurements disagree, and the disagreement is the finding.** Both heads deliver a fifth to a third of the receiver's entire clean-vs-corrupted difference — the path is there and carries signal — while moving the output logit difference by essentially nothing. The deeper a link sits in the chain, the more of its effect is absorbed before reaching the output.
+The two measurements disagree, and the disagreement is the finding: the path is there and carries a fifth to a third of the receiver's entire clean-vs-corrupted difference, while moving the output by essentially nothing. **They are still counted as misses in every table here** — adopting the more favourable metric after seeing it scores better is how a validation exercise stops validating anything.
 
-So logit-difference path patching is the wrong instrument for these heads, rather than the heads being absent. Fixing that needs a metric defined at the receiver instead of at the output — a change of measurement, not of method. It is left for a later phase, and **the previous-token heads are counted as misses in every table above**: adopting the more favourable metric after seeing that it scores better is how a validation exercise stops validating anything.
+## Phase 3 — a pre-registered receiver-side criterion
 
-## Phase 3 — result
+**Two definitions of "found", side by side. Not merged, not ranked.** Full numbers: **[results/PHASE3_REPORT.md](results/PHASE3_REPORT.md)**.
 
-**Two definitions of "found", reported side by side. Not merged, and not ranked.**
-
-Phase 2 ended by naming the receiver-side measure as the obvious next step — and by warning that it had been *observed* to score the missing heads well, which is exactly what makes adopting it dangerous. Phase 3 does it under pre-registration.
-
-Full numbers: **[results/PHASE3_REPORT.md](results/PHASE3_REPORT.md)**.
-
-### The threshold was fixed before the measurement
-
-The rule, not the number, was committed:
+Phase 2 named the receiver-side measure as the obvious next step — and warned it had been *observed* to score the missing heads well, which is what makes adopting it dangerous. So the rule, not the number, was committed first:
 
 > threshold = 99th percentile of `|path_signal|` under a shuffled-source null, rounded up to two significant figures
 
-The null runs the identical procedure but draws the sender's clean value from a *different prompt*. The value carried is a real activation; only its correspondence to the prompt is destroyed. Whatever projection survives is what the method manufactures from nothing. That fixes the false-positive rate at ~1% in advance — the role Phase 1's 0.02 played.
+The null runs the identical procedure but draws the sender's clean value from a *different prompt*: a real activation with its prompt-correspondence destroyed, so any surviving projection is what the method manufactures from nothing. That fixes the false-positive rate at ~1% in advance.
 
-It produced **0.11**. Worth noting the null is heavy-tailed — median 0.0006 but 99th percentile 0.105 — so simply inheriting 0.02 would have carried a large false-positive rate on this quantity.
+It produced **0.11**. The null is heavy-tailed — median 0.0006, 99th percentile 0.105 — so inheriting Phase 1's 0.02 would have carried a large false-positive rate here.
 
-The pre-registration is committed in [`b039915`](../../commit/b039915), a commit containing the threshold and all the code and **no results**. The ordering is checkable in git history rather than asserted here.
-
-**It is not a blind pre-registration, and the report says so.** Phase 2 published real `path_signal` values for the previous-token heads before this rule was written. The narrower claim is that the number was produced by a fixed rule rather than selected, and was not adjusted afterwards.
-
-### What the criterion found
+The pre-registration is committed in [`b039915`](../../commit/b039915), containing the threshold and all the code and **no results**. The ordering is checkable in git history rather than asserted. **It is not a blind pre-registration**: Phase 2 published real `path_signal` values for the previous-token heads before this rule was written. The narrower claim is that the number came from a fixed rule rather than selection, and was not adjusted afterwards.
 
 | published class | logit (all rounds) | logit (rounds 1+) | receiver-side (≥ 0.11) |
 |---|---|---|---|
@@ -143,39 +130,31 @@ The pre-registration is committed in [`b039915`](../../commit/b039915), a commit
 | **total** | 19/26 | 8/26 | 7/26 |
 | precision | 0.90 | 0.80 | **0.64** |
 
-The middle column is the like-for-like one — same rounds, same receivers, same paths, scored by effect on the output instead of delivery to the receiver. Round 0 is out of the receiver-side criterion's scope by construction: its receiver *is* the output, where the two measures are the same quantity.
+The middle column is like-for-like. Round 0 is out of the receiver-side criterion's scope by construction: its receiver *is* the output, where the two measures are the same quantity.
 
-Of the six heads neither earlier phase found, the criterion recovers **two — 2.2 and 4.11, both previous-token heads**, the class that scored 0/2 in both prior phases. It does not rescue `0.10` (+0.042) or `5.8` (+0.008), and `9.0`/`11.9` are outside its scope entirely — not measured and found wanting, not measured at all.
+Of the six heads neither earlier phase found, it recovers **two — 2.2 and 4.11, both previous-token heads**. It does not rescue `0.10` (+0.042) or `5.8` (+0.008); `9.0`/`11.9` are outside its scope entirely — unmeasured, not measured-and-failed. **The criterion is noisier**: precision 0.64 against 0.90.
 
-**The criterion is noisier than the one it sits beside**: precision 0.64 against 0.90. It finds the previous-token heads and also admits several heads with no published role. Both are properties of the same fixed threshold.
-
-**Robustness.** Per-group thresholds were fixed by the same rule at the same time. Only `3.7` and `4.3` depend on the more lenient pooled bar — and neither is a published head. Every published head found also clears its own group's stricter bar, so pooling produced false positives and none of the recoveries.
+**Robustness.** Per-group thresholds were fixed by the same rule at the same time. Only `3.7` and `4.3` depend on the more lenient pooled bar, and neither is a published head — pooling produced false positives and none of the recoveries.
 
 ### Why the scores are not added together
 
-On the like-for-like comparison the two criteria find 8/26 and 7/26, but they disagree about *which* heads, not merely how many — previous-token heads appear only in the second, several induction and name-mover heads only in the first. Merging them would report a larger number while destroying the only new information the phase produced.
+The two criteria disagree about *which* heads, not merely how many — previous-token heads appear only in the second, several induction and name-mover heads only in the first. Merging would report a larger number while destroying the only new information the phase produced.
 
-A head can deliver its content to the next stage of the circuit and still leave the prediction unmoved. The two criteria take opposite views on whether that counts as being part of the circuit, and neither is wrong: explaining a behaviour argues for the output criterion, mapping a mechanism argues for the receiver-side one. **Phases 1 and 2 answered only the first while appearing to answer both.** Making that visible, rather than raising a number, is what this phase was for.
+A head can deliver its content to the next stage of the circuit and still leave the prediction unmoved. The criteria take opposite views on whether that counts, and neither is wrong: explaining a behaviour argues for the output criterion, mapping a mechanism argues for the receiver-side one. **Phases 1 and 2 answered only the first while appearing to answer both.**
 
 ### The boundary this project has not crossed
 
 Every round in Phases 2 and 3 was told *where to look* — that S-inhibition acts on name movers' queries, that duplicate-token information arrives as a value at S2, that induction keys live at S1+1. Those come from the paper's account of the mechanism. Which heads turned up was never constrained; the question asked of them was.
 
-So everything so far is **guided rediscovery**: given the right question, the method finds the right components, in the right causal order. The autonomous loop this README describes has to generate the questions too. On a circuit nobody has published there is no paper to supply the receiver inputs, so a method that needs them supplied does not yet transfer — and unlike every phase so far, there would be no answer key to check the search against.
+So everything so far is **guided rediscovery**: given the right question, the method finds the right components, in the right causal order. The autonomous loop described above has to generate the questions too. On a circuit nobody has published there is no paper to supply the receiver inputs, so a method that needs them supplied does not yet transfer — and unlike every phase so far, there would be no answer key to check the search against.
+
+---
 
 ## Stack
 
 - **Python** 3.12
 - **[transformer_lens](https://github.com/TransformerLensOrg/TransformerLens)** — hooked model internals, activation caching, intervention hooks
 - **PyTorch** with CUDA (see setup — a CPU-only build will work but is painfully slow)
-
-## Status
-
-**Phases 1–3 built and run.** Activation patching, path patching, and a pre-registered receiver-side criterion, all validated against the published IOI circuit. On the output criterion the project stands at 20/26 published heads with the paper's causal ordering reproduced; the receiver-side criterion finds a partly different set, including the two previous-token heads the output criterion cannot reach.
-
-Not implemented: ablation, iterative pruning, and — the real barrier — any search over *receiver specifications*. Every result so far depends on being told which head input, at which position, to ask about. That is the line between guided rediscovery and the autonomous loop described above, and it is the concrete next problem.
-
-No autonomous discovery until then. Phase 2 exists because a confident prediction from Phase 1 turned out to be wrong when tested, and Phase 3 exists because the fix Phase 2 proposed had already been seen to flatter the result. Both are the failure modes an unvalidated system pointed at an unknown circuit would produce silently.
 
 ## Setup
 
@@ -216,7 +195,7 @@ ENVIRONMENT OK
 
 If it reports `CPU-ONLY BUILD` or `no kernels for sm_XX`, the GPU is not being used regardless of what `nvidia-smi` shows.
 
-## Running Phase 1
+## Running the phases
 
 Patching is easy to get subtly wrong in ways that still produce reasonable-looking numbers, so verify the machinery first. These are known-answer tests — cases where the correct result follows from how the experiment is built, not from the model:
 
@@ -224,7 +203,7 @@ Patching is easy to get subtly wrong in ways that still produce reasonable-looki
 python scripts/check_patching.py     # expect: PATCHING OK
 ```
 
-Then the full pipeline. It downloads GPT-2 small on first run and takes about 6 minutes on a laptop RTX 5060:
+Then the pipeline. It downloads GPT-2 small on first run; timings are for a laptop RTX 5060:
 
 ```bash
 python scripts/run_phase1_ioi.py                        # ~6 min, activation patching
@@ -247,24 +226,20 @@ causal_interp/
   comparison.py      # scoring a discovered head set against ground truth
   ground_truth.py    # the published IOI circuit — inert data, never derived from a run
 scripts/
-  check_env.py       # environment + CUDA verification
-  check_patching.py  # known-answer tests for both patching methods
-  run_phase1_ioi.py  # Phase 1: activation patching -> results/
-  run_phase2_paths.py # Phase 2: iterative path patching -> results/
-  run_phase3_receiver.py # Phase 3: --preregister fixes the threshold; main run applies it
-  phase3_analysis.py # Phase 3 comparison + report, imported only by the main run
+  check_env.py            # environment + CUDA verification
+  check_patching.py       # known-answer tests for both patching methods
+  run_phase1_ioi.py       # Phase 1: activation patching -> results/
+  run_phase2_paths.py     # Phase 2: iterative path patching -> results/
+  run_phase3_receiver.py  # Phase 3: --preregister fixes the threshold; main run applies it
+  phase3_analysis.py      # Phase 3 comparison + report, imported only by the main run
 results/
-  PHASE1_REPORT.md   # activation-patching comparison against Wang et al.
-  PHASE2_REPORT.md   # path-patching comparison, and the combined result
-  PHASE3_REPORT.md   # the two criteria side by side
+  PHASE1_REPORT.md / PHASE2_REPORT.md / PHASE3_REPORT.md
   phase3_preregistration.json  # the threshold, committed before the results existed
   phase1_results.json / phase2_results.json / phase3_results.json
   head_effects_*.csv / component_effects_*.csv / path_effects_*.csv / receiver_signals.csv
 ```
 
-`phase3_analysis.py` is a separate module so the `--preregister` path cannot import it: the step that fixes the threshold has no access to the code that computes a real measurement.
-
-The separation between `ground_truth.py` and `comparison.py` is deliberate: the published circuit is hard-coded and the scoring is pure set arithmetic over it, so nothing measured in a run can influence what counts as a match.
+Two separations are deliberate. `ground_truth.py` holds the published circuit as inert data and `comparison.py` scores against it with pure set arithmetic, so nothing measured in a run can influence what counts as a match. And `phase3_analysis.py` is a separate module so the `--preregister` path cannot import it: the step that fixes the threshold has no access to the code that computes a real measurement.
 
 ## License
 
