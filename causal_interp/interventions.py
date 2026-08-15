@@ -310,6 +310,23 @@ class Receiver:
         return f"{self.layer}.{self.head}.{self.input}@{self.position}"
 
 
+def derangement(n: int, seed: int = 0) -> Tensor:
+    """A permutation of 0..n-1 with no fixed point, for the shuffled-source null.
+
+    Every prompt must be paired with a *different* prompt, otherwise part of the
+    null would be the real measurement and the noise floor it calibrates would be
+    contaminated by genuine signal.
+    """
+    generator = torch.Generator().manual_seed(seed)
+    perm = torch.randperm(n, generator=generator)
+    # Fixed points are rare but not impossible; rotate each one into its neighbour.
+    for i in range(n):
+        if perm[i] == i:
+            j = (i + 1) % n
+            perm[i], perm[j] = perm[j].clone(), perm[i].clone()
+    return perm
+
+
 def _freeze_hooks(
     model: HookedTransformer,
     ds: IOIDataset,
@@ -317,6 +334,7 @@ def _freeze_hooks(
     corrupted_cache: ActivationCache,
     sender: Patch,
     freeze_mlps: bool,
+    source_permutation: Tensor | None = None,
 ) -> list[tuple[str, Callable]]:
     """Hooks for the third pass: every head pinned to corrupted, the sender to clean.
 
@@ -329,9 +347,20 @@ def _freeze_hooks(
     between them. `freeze_mlps=True` blocks that route too, which is a stricter
     notion of "direct" and is available so the choice can be measured instead of
     assumed.
+
+    `source_permutation` draws the sender's clean value from a *different* prompt
+    in the batch instead of the matching one. Everything else about the run is
+    unchanged, so the result is what this path measures when the value it carries
+    is real but belongs to the wrong prompt: a null, used to calibrate how much
+    apparent signal the method produces from nothing.
     """
     rows = torch.arange(len(ds), device=ds.clean_tokens.device)
     sender_pos = ds.positions[sender.position]
+    if source_permutation is None:
+        src_rows, src_pos = rows, sender_pos
+    else:
+        src_rows = source_permutation.to(rows.device)
+        src_pos = sender_pos[src_rows]
     hooks: list[tuple[str, Callable]] = []
 
     def make_z_hook(layer: int) -> Callable:
@@ -339,7 +368,7 @@ def _freeze_hooks(
             activation[:] = corrupted_cache[hook.name]
             if layer == sender.layer:
                 clean = clean_cache[hook.name]
-                activation[rows, sender_pos, sender.head] = clean[rows, sender_pos, sender.head]
+                activation[rows, sender_pos, sender.head] = clean[src_rows, src_pos, sender.head]
             return activation
 
         return hook
@@ -450,6 +479,7 @@ def path_signal(
     sender: Patch,
     receivers: Sequence[Receiver],
     freeze_mlps: bool = False,
+    source_permutation: Tensor | None = None,
 ) -> float:
     """How much of the receiver's clean-vs-corrupted difference this path delivers.
 
@@ -486,7 +516,9 @@ def path_signal(
         recorded[hook.name] = activation.detach().clone()
         return activation
 
-    freeze = _freeze_hooks(model, ds, clean_cache, corrupted_cache, sender, freeze_mlps)
+    freeze = _freeze_hooks(
+        model, ds, clean_cache, corrupted_cache, sender, freeze_mlps, source_permutation
+    )
     with torch.no_grad():
         model.run_with_hooks(
             ds.corrupted_tokens, fwd_hooks=freeze + [(name, save_hook) for name in grouped]
@@ -510,6 +542,42 @@ def path_signal(
         # undefined rather than answered zero.
         return float("nan")
     return (numerator / denominator).item()
+
+
+def sweep_path_signal(
+    model: HookedTransformer,
+    ds: IOIDataset,
+    clean_cache: ActivationCache,
+    corrupted_cache: ActivationCache,
+    receivers: Sequence[Receiver],
+    sender_position: str,
+    freeze_mlps: bool = False,
+    source_permutation: Tensor | None = None,
+    progress: Callable[[int, int], None] | None = None,
+) -> Tensor:
+    """`path_signal` for every head into a fixed receiver set.
+
+    The receiver-side counterpart of `sweep_path_senders`. Same sender eligibility
+    rule: senders at or above the earliest receiver's layer are left NaN, because
+    their score would be an effect on a smaller receiver set than everyone else's.
+
+    Pass `source_permutation` to sweep the shuffled-source null instead.
+    """
+    out = torch.full((model.cfg.n_layers, model.cfg.n_heads), float("nan"))
+    ceiling = min(r.layer for r in receivers)
+    total = ceiling * model.cfg.n_heads
+    done = 0
+    for layer in range(ceiling):
+        for head in range(model.cfg.n_heads):
+            sender = Patch(layer=layer, kind="z", position=sender_position, head=head)
+            out[layer, head] = path_signal(
+                model, ds, clean_cache, corrupted_cache, sender, receivers,
+                freeze_mlps, source_permutation,
+            )
+            done += 1
+            if progress is not None:
+                progress(done, total)
+    return out
 
 
 def sweep_path_senders(

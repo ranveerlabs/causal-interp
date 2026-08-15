@@ -1,0 +1,158 @@
+{
+  "rule": "threshold = 99% percentile of |path_signal| under a shuffled-source null, rounded up to 2 significant figures",
+  "null_quantile": 0.99,
+  "significant_figures": 2,
+  "null_seed": 20260815,
+  "n_prompts": 128,
+  "dataset_seed": 0,
+  "n_null_measurements": 552,
+  "raw_quantile": 0.10522226244211197,
+  "threshold": 0.11,
+  "null_max": 0.18464185297489166,
+  "null_median": 0.0006125133368186653,
+  "null_mean": 0.0061692423187196255,
+  "per_group": [
+    {
+      "label": "s2_swap round 1",
+      "scheme": "s2_swap",
+      "position": "END",
+      "receivers": [
+        "9.9.q@END",
+        "10.7.q@END",
+        "9.6.q@END",
+        "11.10.q@END"
+      ],
+      "n_senders": 108,
+      "max_abs_null": 0.13377012312412262,
+      "mean_abs_null": 0.003938150308158583,
+      "group_raw_quantile": 0.10602899640798569,
+      "group_threshold": 0.11
+    },
+    {
+      "label": "s2_swap round 2",
+      "scheme": "s2_swap",
+      "position": "S2",
+      "receivers": [
+        "8.6.v@S2",
+        "8.10.v@S2",
+        "7.9.v@S2",
+        "7.3.v@S2"
+      ],
+      "n_senders": 84,
+      "max_abs_null": 0.1348293274641037,
+      "mean_abs_null": 0.00440784563245429,
+      "group_raw_quantile": 0.07391075789928436,
+      "group_threshold": 0.074
+    },
+    {
+      "label": "s2_swap round 3",
+      "scheme": "s2_swap",
+      "position": "S1+1",
+      "receivers": [
+        "5.5.k@S1+1",
+        "3.0.k@S1+1",
+        "6.9.k@S1+1",
+        "5.9.k@S1+1"
+      ],
+      "n_senders": 0,
+      "max_abs_null": null,
+      "mean_abs_null": null,
+      "group_raw_quantile": null,
+      "group_threshold": null
+    },
+    {
+      "label": "abc round 1",
+      "scheme": "abc",
+      "position": "END",
+      "receivers": [
+        "9.9.q@END",
+        "10.7.q@END",
+        "9.6.q@END",
+        "11.10.q@END"
+      ],
+      "n_senders": 108,
+      "max_abs_null": 0.08122406154870987,
+      "mean_abs_null": 0.0023100015097270443,
+      "group_raw_quantile": 0.036856509745121,
+      "group_threshold": 0.037
+    },
+    {
+      "label": "abc round 2",
+      "scheme": "abc",
+      "position": "S2",
+      "receivers": [
+        "8.10.v@S2",
+        "7.9.v@S2",
+        "8.6.v@S2",
+        "7.3.v@S2"
+      ],
+      "n_senders": 84,
+      "max_abs_null": 0.1449328511953354,
+      "mean_abs_null": 0.006399215250569666,
+      "group_raw_quantile": 0.08981482684612274,
+      "group_threshold": 0.09
+    },
+    {
+      "label": "abc round 3",
+      "scheme": "abc",
+      "position": "S1+1",
+      "receivers": [
+        "0.1.k@S1+1",
+        "3.0.k@S1+1",
+        "5.5.k@S1+1",
+        "4.4.k@S1+1"
+      ],
+      "n_senders": 0,
+      "max_abs_null": null,
+      "mean_abs_null": null,
+      "group_raw_quantile": null,
+      "group_threshold": null
+    },
+    {
+      "label": "previous-token probe (receivers layer >= 3)",
+      "scheme": "abc",
+      "position": "S1+1",
+      "receivers": [
+        "5.5.k@S1+1",
+        "3.0.k@S1+1",
+        "6.9.k@S1+1",
+        "5.9.k@S1+1"
+      ],
+      "n_senders": 36,
+      "max_abs_null": 0.1021103635430336,
+      "mean_abs_null": 0.0068443566902311025,
+      "group_raw_quantile": 0.08427245169878006,
+      "group_threshold": 0.085
+    },
+    {
+      "label": "previous-token probe (receivers layer >= 5)",
+      "scheme": "abc",
+      "position": "S1+1",
+      "receivers": [
+        "5.5.k@S1+1",
+        "6.9.k@S1+1",
+        "5.9.k@S1+1"
+      ],
+      "n_senders": 60,
+      "max_abs_null": 0.18464185297489166,
+      "mean_abs_null": 0.012820502276493546,
+      "group_raw_quantile": 0.13519474864006042,
+      "group_threshold": 0.14
+    },
+    {
+      "label": "previous-token probe (receivers layer >= 6)",
+      "scheme": "abc",
+      "position": "S1+1",
+      "receivers": [
+        "6.9.k@S1+1"
+      ],
+      "n_senders": 72,
+      "max_abs_null": 0.1782066822052002,
+      "mean_abs_null": 0.011211129263263805,
+      "group_raw_quantile": 0.11961990594863892,
+      "group_threshold": 0.12
+    }
+  ],
+  "written": "2026-08-15 00:29:40",
+  "note": "Computed before any real path_signal measurement in this phase. The author had already seen a handful of Phase 2 path_signal values, so this is not a blind pre-registration; the mitigation is that the number is produced by a fixed rule rather than chosen."
+}
