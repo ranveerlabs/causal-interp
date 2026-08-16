@@ -30,6 +30,12 @@ IOI_CIRCUIT: dict[str, tuple[Head, ...]] = {
     "previous token": ((2, 2), (4, 11)),
 }
 
+# Alias under the neutral name `comparison.py` looks for, so that module can score
+# against any published circuit without knowing which one it was handed. Added in
+# Phase 6, when a second circuit arrived; the IOI-specific name stays as the one
+# every earlier phase imports.
+CIRCUIT = IOI_CIRCUIT
+
 # The paper's headline count. Asserted so a typo above cannot silently weaken
 # the comparison this whole phase rests on.
 PUBLISHED_HEAD_COUNT = 26

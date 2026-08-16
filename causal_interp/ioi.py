@@ -30,6 +30,8 @@ import torch
 from torch import Tensor
 from transformer_lens import HookedTransformer
 
+from causal_interp.corruption import random_vocab_corruption
+
 # Templates end immediately before the answer token. {a} and {b} are the two
 # names of the opening clause in order; {s} is the repeated subject. Adapted
 # from the template set in Wang et al. (2022).
@@ -218,29 +220,20 @@ class IOIDataset:
         position — a position Phase 4 showed can be searched rather than supplied —
         and `random_vocab_any` picks the position uniformly too, supplying nothing.
 
+        The procedure itself lives in `causal_interp.corruption` so that Phase 6's
+        second task calls the identical function rather than a lookalike. All this
+        method still decides is which position, if any, to anchor on.
+
         Returns the corrupted tokens and the index that was changed in each prompt.
         """
-        generator = torch.Generator().manual_seed(seed + 777)
-        tokens = self.clean_tokens.clone()
-        d_vocab = self.model.cfg.d_vocab
-        indices = torch.zeros(len(self), dtype=torch.long, device=tokens.device)
-
-        for i in range(len(self)):
-            if self.corruption == "random_vocab_s2":
-                index = int(self.positions["S2"][i])
-            else:
-                # Any real token, excluding the BOS at index 0 which is not part of
-                # the prompt. The final token is eligible: a generic corruption has
-                # no reason to protect it.
-                index = int(torch.randint(1, int(self.lengths[i]), (1,), generator=generator))
-            original = int(tokens[i, index])
-            replacement = original
-            while replacement == original:
-                replacement = int(torch.randint(0, d_vocab, (1,), generator=generator))
-            tokens[i, index] = replacement
-            indices[i] = index
-
-        return tokens, indices
+        anchor = self.positions["S2"] if self.corruption == "random_vocab_s2" else None
+        return random_vocab_corruption(
+            clean_tokens=self.clean_tokens,
+            lengths=self.lengths,
+            d_vocab=self.model.cfg.d_vocab,
+            seed=seed,
+            anchor=anchor,
+        )
 
     def _locate_positions(self) -> dict[str, Tensor]:
         """Find IO/S1/S2/END indices by searching the clean tokens for the name ids."""
