@@ -4,7 +4,7 @@ An autonomous system for discovering and **causally validating** computational m
 
 ## Where this stands
 
-Validating the method against GPT-2 small's IOI circuit, published in Wang et al. (2022), [*Interpretability in the Wild*](https://arxiv.org/abs/2211.00593) — 26 attention heads in 7 classes, so there is a known answer to check against.
+Phases 1–5 validated the method against GPT-2 small's IOI circuit, published in Wang et al. (2022), [*Interpretability in the Wild*](https://arxiv.org/abs/2211.00593) — 26 attention heads in 7 classes, so there is a known answer to check against. **Phase 6 ran the same pipeline, unmodified, against a second published circuit** to test whether any of it was secretly fitted to IOI.
 
 | phase | method | result |
 |---|---|---|
@@ -13,14 +13,15 @@ Validating the method against GPT-2 small's IOI circuit, published in Wang et al
 | [3](#phase-3--a-pre-registered-receiver-side-criterion) | pre-registered receiver-side criterion | recovers **2 of the 6** still-missing heads (both previous-token), at precision 0.64 — a *different* definition of "found", reported beside the first rather than merged |
 | [4](#phase-4--searching-for-receiver-specifications) | search for receiver specifications | **16 of 17** scoreable specifications recovered without being told them — and the unlabelled search finds the same token positions the labelled one uses |
 | [5](#phase-5--scoping-what-is-still-hand-built) | scope the remaining hand-built pieces | the metric's **answer key is not needed** (19/26 vs 18/26); removing the corruption's knowledge *as well* costs a third of recall; task construction left open |
+| [6](#phase-6--a-second-published-circuit) | **the same pipeline on a second circuit** | **7/7** heads and **7/7** receiver specifications on the greater-than circuit, with the causal core **unmodified** — one shared module needed a parameter, and nothing else changed |
 
-Across both definitions of "found", 22 of the 26 published heads have been recovered by something. That figure spans two criteria that disagree about which heads count, and [Phase 3 explains why they are not added together](#why-the-scores-are-not-added-together) — it is not one method's recall.
+Across both definitions of "found", 22 of the 26 published IOI heads have been recovered by something. That figure spans two criteria that disagree about which heads count, and [Phase 3 explains why they are not added together](#why-the-scores-are-not-added-together) — it is not one method's recall.
 
-### What five phases do and do not demonstrate
+### What six phases do and do not demonstrate
 
-**Demonstrated.** Given a behaviour to study, this method locates the circuit that implements it, recovers the causal ordering between its parts, and does so without being told where to look. Phase 4 searched for receiver specifications and recovered 16 of the 17 it could score. Phase 5 showed the metric does not need the answer key.
+**Demonstrated.** Given a behaviour to study, this method locates the circuit that implements it, recovers the causal ordering between its parts, and does so without being told where to look. Phase 4 searched for receiver specifications and recovered 16 of the 17 it could score. Phase 5 showed the metric does not need the answer key. **Phase 6 showed none of that was fitted to IOI**: pointed at a circuit published by a different group, on a different task, with a different counterfactual and a different metric, the causal core ran unchanged and recovered more of it than it recovers of IOI.
 
-**Not demonstrated, and the gap is not incremental.** Nothing here chooses *which behaviour to study*. Every phase takes IOI as given and asks how the model implements it; no improvement to patching, searching or scoring turns that into a method for finding behaviours worth studying. The machinery can test a hypothesis and cannot propose one.
+**Not demonstrated, and the gap is not incremental.** Nothing here chooses *which behaviour to study*. Every phase takes its task as given and asks how the model implements it; no improvement to patching, searching or scoring turns that into a method for finding behaviours worth studying. The machinery can test a hypothesis and cannot propose one. Phase 6 widened the evidence base without moving this line — both circuits live in **the same model**, so nothing yet speaks to transfer across models.
 
 **The honest ladder**, from what is still supplied to what is now discovered:
 
@@ -30,11 +31,12 @@ Across both definitions of "found", 22 of the 26 published heads have been recov
 | task template | **supplied** — explicitly out of scope |
 | corruption content | **supplied** — a generic substitute costs little alone, but not once the metric is generic too |
 | corruption position | searchable (Phase 4) |
-| receiver input and position | searchable (Phase 4) |
-| answer key in the metric | **not needed** (Phase 5) |
-| circuit components and wiring | discovered (Phases 1–3) |
+| receiver input and position | searchable (Phases 4, 6) |
+| answer key in the metric | **not needed** (Phases 5, 6) |
+| circuit components and wiring | discovered (Phases 1–3, 6) |
+| **generality beyond one circuit** | **tested** (Phase 6) — transfers to a second circuit in the same model; untested across models |
 
-The line sits between the top two rows and the rest. Below it, the project answers questions about an already-chosen behaviour with progressively less help. Above it is untouched — and a next phase attacking it would need a validation strategy that does not exist here, because IOI cannot check task construction when IOI *is* the supplied task.
+The line still sits between the top two rows and the rest. Below it, the project answers questions about an already-chosen behaviour with progressively less help, and Phase 6 showed those answers are not IOI-specific. Above it is untouched — and a next phase attacking it would need a validation strategy that does not exist here, because a published circuit cannot check task construction when the published task *is* what was supplied.
 
 ## Goal
 
@@ -262,6 +264,48 @@ The negative result stands in the form that matters: **fully generic recovers 13
 
 Choosing which behaviour to study is a different kind of problem from anything in Phases 1–5. A weak version was available — sweeping templates, or mining a corpus for predictable completions — and was deliberately not built, because it would have produced a section in the report and no evidence that the resulting tasks isolate anything mechanistically interesting.
 
+## Phase 6 — a second published circuit
+
+**The pipeline was not fitted to IOI.** Full numbers: **[results/PHASE6_REPORT.md](results/PHASE6_REPORT.md)**; the target, ground truth, scoring rules and four predictions were fixed in **[results/PHASE6_PLAN.md](results/PHASE6_PLAN.md)**, committed before any Phase 6 code existed.
+
+Every threshold, criterion and design choice in Phases 1–5 was made while looking at one answer key. That is the standing reason to distrust all of it: nothing so far separated *a method that works* from *a method fitted to IOI*. So the whole pipeline was pointed at the **greater-than circuit** (Hanna, Liu, Variengien 2023, [*How does GPT-2 compute greater-than?*](https://arxiv.org/abs/2305.00586)) — 7 attention heads plus MLPs 8–11 — with no retuning.
+
+Chosen over induction heads because its published ground truth is as specific as IOI's: the paper names seven heads individually, and the authors' code release lists exactly those seven.
+
+| measurement | greater-than | IOI, same measurement |
+|---|---|---|
+| activation patching, hand-built metric | **7/7** | 18/26 |
+| activation patching, KL (no answer key) | **7/7** | 19/26 |
+| path patching, all rounds | **7/7** | 19/26 |
+| receiver specifications recovered by search | **7/7** | 16/17 scoreable |
+
+**Recovery is better than IOI's, not worse** — which is the opposite of the failure this phase was built to detect, and worth deflating: seven targets is an easier set than twenty-six, and this circuit has no analogue of IOI's previous-token heads, the class activation patching structurally cannot see.
+
+### What transferred, which is the real measure
+
+| module | status |
+|---|---|
+| `interventions.py`, `search.py`, `metrics.py`, `model.py` | **untouched** — the causal core ran as-is |
+| `comparison.py` | one added `circuit` parameter, defaulting to IOI |
+| `ioi.py` | generic-corruption body moved to a shared module, call site left |
+| `greater_than.py`, `ground_truth_greater_than.py` | new — the task and the answer key |
+
+No existing call site was edited. Backward compatibility is verified rather than claimed: `check_patching.py` passes unchanged, IOI's corrupted token tensors hash identically under all four schemes before and after the corruption extraction, and Phase 1's stored headline is reproduced exactly by the modified `comparison.py`.
+
+### Three results that complicate the headline
+
+Reported because they cut against it, not despite that:
+
+- **The two circuits are not disjoint.** `5.5` and `6.9` belong to both published circuits, and Phase 1 had already found both. Five of the seven are genuinely new to this project.
+- **The receiver-side criterion found none of the in-scope published heads.** Only 2 of the 7 were ever eligible as senders — the rest occupy the *receiver* slot and are unmeasured, not measured-and-failed. It did surface `0.1` and `0.3`, which the paper's appendix names as the circuit's upstream dependencies, and which the chain was never told about.
+- **Phase 3's threshold could not be inherited as a number.** Its *rule* was, and recalibrating the null gave **0.046** against IOI's 0.11 — so reusing the number would have been far too strict here, erring in the opposite direction from the one Phase 3 warned about.
+
+One prediction was scored a **tie rather than a hit**: precision was predicted to degrade, and came out 0.778 against IOI's 0.783, a gap of 0.005 that confirms nothing.
+
+### What it still does not show
+
+Both circuits live in **GPT-2 small**. This tests generality across tasks and circuits, not across models. And two circuits is two — the honest reading is that one specific failure mode was tested for and not found, not that the method transfers to circuits unlike both.
+
 ---
 
 ## Stack
@@ -328,11 +372,19 @@ python scripts/run_phase4_search.py                     # ~31 min, receiver-spec
 python scripts/run_phase5_scoping.py                    # ~9 min, metric/corruption scoping
 ```
 
-Phase 4 is by far the longest — two exhaustive grids, 9,936 forward passes. Phases 4 and 5 both support `--report-only`, which rebuilds their reports from the stored CSVs without repeating the sweep.
+Phase 6 targets a different circuit and runs in three stages, for the same reason Phase 3 splits its pre-registration out — the recalibrated threshold has to be on record before the comparison it will be judged by:
 
-Each regenerates its own report, the JSON behind it, and per-head CSVs in `results/`. All runs are seeded, so they reproduce exactly. The phases chain — Phase 2 reads `phase1_results.json`, Phase 3 reads `phase2_results.json` — so run them in order on a clean checkout.
+```bash
+python scripts/run_phase6_greater_than.py --stage sweep   # ~4 min, patching + path chain
+python scripts/run_phase6_greater_than.py --preregister    # ~1 min, recalibrate the null
+python scripts/run_phase6_greater_than.py                  # ~15 min, search + comparison
+```
 
-Phase 3 refuses to run without a recorded threshold, and rejects one calibrated at a different `n` or seed. That is deliberate: the point of the pre-registration is that the threshold cannot be adjusted once results exist.
+Phase 4 is the longest single sweep — two exhaustive grids, 9,936 forward passes. Phases 4, 5 and 6 all support `--report-only`, which rebuilds their reports from the stored results without repeating the sweep.
+
+Each regenerates its own report, the JSON behind it, and per-head CSVs in `results/`. All runs are seeded, so they reproduce exactly. The phases chain — Phase 2 reads `phase1_results.json`, Phase 3 reads `phase2_results.json`, Phase 6's later stages read its earlier ones — so run them in order on a clean checkout.
+
+Phases 3 and 6 refuse to run without a recorded threshold, and reject one calibrated at a different `n` or seed. That is deliberate: the point of the pre-registration is that the threshold cannot be adjusted once results exist.
 
 ## Layout
 
@@ -340,11 +392,14 @@ Phase 3 refuses to run without a recorded threshold, and rejects one calibrated 
 causal_interp/
   model.py           # model loading, device selection
   ioi.py             # IOI task: prompt pairs, corruption schemes, position indices
+  greater_than.py    # greater-than task, same interface — Phase 6's second target
+  corruption.py      # task-agnostic generic corruption, shared by both tasks
   interventions.py   # activation patching, path patching, sweeps, circuit narrowing
-  comparison.py      # scoring a discovered head set against ground truth
+  comparison.py      # scoring a discovered head set against a ground truth
   metrics.py         # answer-key-free recovery metrics (KL, total variation)
-  search.py          # Phase 4 receiver-spec search — must never import ground_truth
-  ground_truth.py    # the published IOI circuit — inert data, never derived from a run
+  search.py          # receiver-spec search — must never import a ground_truth module
+  ground_truth.py                # the published IOI circuit — inert data
+  ground_truth_greater_than.py   # the published greater-than circuit — inert data
 scripts/
   check_env.py            # environment + CUDA verification
   check_patching.py       # known-answer tests for both patching methods
@@ -356,17 +411,22 @@ scripts/
   phase4_report.py        # Phase 4 report, kept out of the search module
   run_phase5_scoping.py   # Phase 5: metric and corruption scoping -> results/
   phase5_report.py        # Phase 5 report
+  run_phase6_greater_than.py  # Phase 6: the whole pipeline on the second circuit
+  phase6_report.py            # Phase 6 report
 results/
-  PHASE1_REPORT.md … PHASE5_REPORT.md
+  PHASE1_REPORT.md … PHASE6_REPORT.md
   PHASE4_SEARCH_SPACE.md       # the space and budget, committed before the search code
   PHASE5_AUDIT.md              # what each hand-built piece encodes, committed before the tests
+  PHASE6_PLAN.md               # target, ground truth and predictions, committed before the code
   phase3_preregistration.json  # the threshold, committed before the results existed
-  phase1_results.json … phase5_results.json
+  phase6_preregistration.json  # the recalibrated threshold, same rule, same ordering
+  phase1_results.json … phase6_results.json
   head_effects_*.csv / component_effects_*.csv / path_effects_*.csv
   receiver_signals.csv / receiver_search_*.csv / phase5_metric_effects.csv
+  phase6_head_effects.csv / phase6_component_effects.csv / phase6_receiver_search_*.csv
 ```
 
-Three separations are deliberate, and each one makes a claim checkable rather than promised. `ground_truth.py` holds the published circuit as inert data while `comparison.py` scores against it with pure set arithmetic, so nothing measured in a run can influence what counts as a match. `phase3_analysis.py` is a separate module so the `--preregister` path cannot import it. And `search.py` must never import `ground_truth` — Phase 4 asserts this at startup, because a search that can see the answer key is not a search.
+Four separations are deliberate, and each one makes a claim checkable rather than promised. The `ground_truth*` modules hold published circuits as inert data while `comparison.py` scores against whichever it is handed, with pure set arithmetic, so nothing measured in a run can influence what counts as a match. `phase3_analysis.py` is a separate module so the `--preregister` path cannot import it. `search.py` must never import a `ground_truth` module — Phases 4 and 6 assert this at startup, because a search that can see the answer key is not a search. And the two circuits live in **separate** modules rather than one registry, so a run cannot accidentally be scored against their union.
 
 ## License
 
