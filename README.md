@@ -12,10 +12,29 @@ Validating the method against GPT-2 small's IOI circuit, published in Wang et al
 | [2](#phase-2--path-patching) | path patching | **20/26** — Phase 1's prediction that this would close the gap was **wrong**; precision 0.71 → 0.90, and the paper's causal *ordering* recovered |
 | [3](#phase-3--a-pre-registered-receiver-side-criterion) | pre-registered receiver-side criterion | recovers **2 of the 6** still-missing heads (both previous-token), at precision 0.64 — a *different* definition of "found", reported beside the first rather than merged |
 | [4](#phase-4--searching-for-receiver-specifications) | search for receiver specifications | **16 of 17** scoreable specifications recovered without being told them — and the unlabelled search finds the same token positions the labelled one uses |
+| [5](#phase-5--scoping-what-is-still-hand-built) | scope the remaining hand-built pieces | the metric's **answer key is not needed** (19/26 vs 18/26); removing the corruption's knowledge *as well* costs a third of recall; task construction left open |
 
 Across both definitions of "found", 22 of the 26 published heads have been recovered by something. That figure spans two criteria that disagree about which heads count, and [Phase 3 explains why they are not added together](#why-the-scores-are-not-added-together) — it is not one method's recall.
 
-**Not implemented:** ablation, iterative pruning, and — now the largest remaining gap — any construction of the *task and its counterfactual*. Phase 4 removed the need to be told which head input at which position to interrogate; the templates, the corruption schemes and the metric are all still designed by hand from knowledge of what the model is doing.
+### What five phases do and do not demonstrate
+
+**Demonstrated.** Given a behaviour to study, this method locates the circuit that implements it, recovers the causal ordering between its parts, and does so without being told where to look. Phase 4 searched for receiver specifications and recovered 16 of the 17 it could score. Phase 5 showed the metric does not need the answer key.
+
+**Not demonstrated, and the gap is not incremental.** Nothing here chooses *which behaviour to study*. Every phase takes IOI as given and asks how the model implements it; no improvement to patching, searching or scoring turns that into a method for finding behaviours worth studying. The machinery can test a hypothesis and cannot propose one.
+
+**The honest ladder**, from what is still supplied to what is now discovered:
+
+| ingredient | status |
+|---|---|
+| which behaviour to study | **supplied** — no method attempted |
+| task template | **supplied** — explicitly out of scope |
+| corruption content | **supplied** — a generic substitute costs little alone, but not once the metric is generic too |
+| corruption position | searchable (Phase 4) |
+| receiver input and position | searchable (Phase 4) |
+| answer key in the metric | **not needed** (Phase 5) |
+| circuit components and wiring | discovered (Phases 1–3) |
+
+The line sits between the top two rows and the rest. Below it, the project answers questions about an already-chosen behaviour with progressively less help. Above it is untouched — and a next phase attacking it would need a validation strategy that does not exist here, because IOI cannot check task construction when IOI *is* the supplied task.
 
 ## Goal
 
@@ -203,6 +222,46 @@ Sweeping senders into the specifications the *search* chose — not ones supplie
 2. **The task, the counterfactual and the metric are still hand-built** from knowledge of what the model does. This is now the largest gap, and it is larger than the one this phase closed.
 3. **There is no answer key on an unfamiliar circuit.** The search emits a ranking either way; nothing in the ranking distinguishes the case where it is right from the case where it is wrong. No published specification landed in the ambiguous band here, which is a better outcome than the alternative — but that is a property of this task at this sample size, not a guarantee, and the method still has no calibrated notion of when its own ranking is uninformative.
 
+## Phase 5 — scoping what is still hand-built
+
+**Diagnostic, not a build.** Full numbers: **[results/PHASE5_REPORT.md](results/PHASE5_REPORT.md)**; what each remaining piece encodes is itemised in **[results/PHASE5_AUDIT.md](results/PHASE5_AUDIT.md)**, written and committed before any experiment ran.
+
+Phase 4 named three things still built by hand — the task, the corruption schemes, and the metric. This phase measures how much of the project's result actually depended on them, using IOI because the answer is still known and can check the substitution.
+
+### The metric does not need the answer key
+
+`logit_diff` requires knowing which two tokens are the candidates and which is correct. Replacing it with a divergence over the *whole* next-token distribution needs neither — only the two runs the corruption already provides. Size-matched to the published circuit's 26 heads:
+
+| metric | knows the answer? | recovered |
+|---|---|---|
+| logit difference | yes | 18/26 |
+| KL divergence | **no** | **19/26** |
+| total variation | **no** | **19/26** |
+
+Per-head rankings from the hand-built metric and KL correlate at **+0.98**. The piece of knowledge that looked most load-bearing turns out not to be needed to locate the circuit.
+
+### Removing the corruption's knowledge *too* is what costs
+
+Generic corruptions substitute a uniformly drawn vocabulary token instead of a semantically chosen name. The result inverted my expectation:
+
+| what is supplied | recovered |
+|---|---|
+| hand-built corruption + hand-built metric | 18/26 |
+| hand-built corruption + general metric | **19/26** |
+| generic corruption + hand-built metric | **18/26** |
+| generic corruption + general metric | 16/26 |
+| nothing supplied at all | **13/26** |
+
+**The two pieces are not independently load-bearing and not additive.** Either one alone carries enough task knowledge to locate the circuit; what fails is removing both. A corruption that damages the prompt arbitrarily still gives usable signal *if the metric knows what to look at* — and a metric that reads everything still works *if the corruption was aimed at the right thing*.
+
+The mechanism: `s2_swap` was built to *reverse* the behaviour, so the corrupted run sits as far from clean as the task allows. A random token merely damages the prompt, the corrupted run still partly performs the task, and the measurable span collapses. A two-token metric still points that shrunken span at the right quantity; a distribution-wide metric shares it out over every irrelevant way the prompts differ.
+
+The negative result stands in the form that matters: **fully generic recovers 13/26 against 18/26**, and on an unfamiliar circuit there would be no published answer to notice that degradation against.
+
+### Task construction: not attempted, and not on budget grounds
+
+Choosing which behaviour to study is a different kind of problem from anything in Phases 1–5. A weak version was available — sweeping templates, or mining a corpus for predictable completions — and was deliberately not built, because it would have produced a section in the report and no evidence that the resulting tasks isolate anything mechanistically interesting.
+
 ---
 
 ## Stack
@@ -266,9 +325,10 @@ python scripts/run_phase2_paths.py                      # ~4 min, path patching
 python scripts/run_phase3_receiver.py --preregister     # ~2 min, fix the threshold
 python scripts/run_phase3_receiver.py                   # ~2 min, apply it
 python scripts/run_phase4_search.py                     # ~31 min, receiver-spec search
+python scripts/run_phase5_scoping.py                    # ~9 min, metric/corruption scoping
 ```
 
-Phase 4 is by far the longest — it is two exhaustive grids, 9,936 forward passes. `--report-only` rebuilds its report from the stored CSVs without repeating the sweep.
+Phase 4 is by far the longest — two exhaustive grids, 9,936 forward passes. Phases 4 and 5 both support `--report-only`, which rebuilds their reports from the stored CSVs without repeating the sweep.
 
 Each regenerates its own report, the JSON behind it, and per-head CSVs in `results/`. All runs are seeded, so they reproduce exactly. The phases chain — Phase 2 reads `phase1_results.json`, Phase 3 reads `phase2_results.json` — so run them in order on a clean checkout.
 
@@ -282,6 +342,7 @@ causal_interp/
   ioi.py             # IOI task: prompt pairs, corruption schemes, position indices
   interventions.py   # activation patching, path patching, sweeps, circuit narrowing
   comparison.py      # scoring a discovered head set against ground truth
+  metrics.py         # answer-key-free recovery metrics (KL, total variation)
   search.py          # Phase 4 receiver-spec search — must never import ground_truth
   ground_truth.py    # the published IOI circuit — inert data, never derived from a run
 scripts/
@@ -293,13 +354,16 @@ scripts/
   phase3_analysis.py      # Phase 3 comparison + report, imported only by the main run
   run_phase4_search.py    # Phase 4: exhaustive receiver-spec search -> results/
   phase4_report.py        # Phase 4 report, kept out of the search module
+  run_phase5_scoping.py   # Phase 5: metric and corruption scoping -> results/
+  phase5_report.py        # Phase 5 report
 results/
-  PHASE1_REPORT.md / PHASE2_REPORT.md / PHASE3_REPORT.md / PHASE4_REPORT.md
+  PHASE1_REPORT.md … PHASE5_REPORT.md
   PHASE4_SEARCH_SPACE.md       # the space and budget, committed before the search code
+  PHASE5_AUDIT.md              # what each hand-built piece encodes, committed before the tests
   phase3_preregistration.json  # the threshold, committed before the results existed
-  phase1_results.json / phase2_results.json / phase3_results.json / phase4_results.json
+  phase1_results.json … phase5_results.json
   head_effects_*.csv / component_effects_*.csv / path_effects_*.csv
-  receiver_signals.csv / receiver_search_*.csv
+  receiver_signals.csv / receiver_search_*.csv / phase5_metric_effects.csv
 ```
 
 Three separations are deliberate, and each one makes a claim checkable rather than promised. `ground_truth.py` holds the published circuit as inert data while `comparison.py` scores against it with pure set arithmetic, so nothing measured in a run can influence what counts as a match. `phase3_analysis.py` is a separate module so the `--preregister` path cannot import it. And `search.py` must never import `ground_truth` — Phase 4 asserts this at startup, because a search that can see the answer key is not a search.
