@@ -75,7 +75,14 @@ OBJECTS: tuple[str, ...] = (
 # heads fire; "END" is where the answer is read off.
 POSITIONS: tuple[str, ...] = ("IO", "IO+1", "S1", "S1+1", "S2", "S2+1", "END")
 
-CORRUPTIONS: tuple[str, ...] = ("s2_swap", "abc")
+# The first two are designed from knowledge of the task: they replace a name with
+# another name, chosen so the correct answer changes in a known way. The
+# `random_vocab_*` pair replaces a token with one drawn uniformly from the
+# vocabulary instead, which needs no knowledge of what any token means. Phase 5
+# uses them to measure what that knowledge was buying.
+CORRUPTIONS: tuple[str, ...] = ("s2_swap", "abc", "random_vocab_s2", "random_vocab_any")
+
+GENERIC_CORRUPTIONS: tuple[str, ...] = ("random_vocab_s2", "random_vocab_any")
 
 
 @dataclass(frozen=True)
@@ -155,6 +162,9 @@ class IOIDataset:
         )
         self.positions = self._locate_positions()
 
+        if self.corruption in GENERIC_CORRUPTIONS:
+            self.corrupted_tokens, self.corrupted_indices = self._apply_generic_corruption(seed)
+
     def __len__(self) -> int:
         return len(self.prompts)
 
@@ -187,12 +197,50 @@ class IOIDataset:
             # clean and corrupted are identical up to that position — the price is
             # that nothing before it can be probed (see the report).
             corrupted = template.format(a=a, b=b, s=io_name, place=place, obj=obj)
-        else:  # "abc": three fresh distinct names, so no name is repeated at all
+        elif self.corruption == "abc":  # three fresh distinct names: no name repeats
             pool = [x for x in names if x not in (io_name, s_name)]
             a2, b2, s2 = corrupt_rng.sample(pool, 3)
             corrupted = template.format(a=a2, b=b2, s=s2, place=place, obj=obj)
+        else:
+            # Generic corruptions act on tokens, not text: a uniformly drawn
+            # vocabulary entry has no spelling that can be substituted into a
+            # template. The corrupted text is the clean text here, and the token
+            # substitution happens after tokenization.
+            corrupted = clean
 
         return IOIPrompt(clean, corrupted, io_name, s_name, template, order)
+
+    def _apply_generic_corruption(self, seed: int) -> tuple[Tensor, Tensor]:
+        """Corrupt by substituting a uniformly drawn vocabulary token.
+
+        No knowledge of what any token means is used: not which tokens are names,
+        not which one is the answer. `random_vocab_s2` substitutes at the S2
+        position — a position Phase 4 showed can be searched rather than supplied —
+        and `random_vocab_any` picks the position uniformly too, supplying nothing.
+
+        Returns the corrupted tokens and the index that was changed in each prompt.
+        """
+        generator = torch.Generator().manual_seed(seed + 777)
+        tokens = self.clean_tokens.clone()
+        d_vocab = self.model.cfg.d_vocab
+        indices = torch.zeros(len(self), dtype=torch.long, device=tokens.device)
+
+        for i in range(len(self)):
+            if self.corruption == "random_vocab_s2":
+                index = int(self.positions["S2"][i])
+            else:
+                # Any real token, excluding the BOS at index 0 which is not part of
+                # the prompt. The final token is eligible: a generic corruption has
+                # no reason to protect it.
+                index = int(torch.randint(1, int(self.lengths[i]), (1,), generator=generator))
+            original = int(tokens[i, index])
+            replacement = original
+            while replacement == original:
+                replacement = int(torch.randint(0, d_vocab, (1,), generator=generator))
+            tokens[i, index] = replacement
+            indices[i] = index
+
+        return tokens, indices
 
     def _locate_positions(self) -> dict[str, Tensor]:
         """Find IO/S1/S2/END indices by searching the clean tokens for the name ids."""
