@@ -177,14 +177,20 @@ def _predictions(payload: dict) -> str:
     pred4_ok = generic_sized < hand_sized
 
     def mark(ok: bool | None) -> str:
-        return "✅ held" if ok else ("✗ **wrong**" if ok is False else "◐ unscored")
+        return "✅ held" if ok else ("✗ **wrong**" if ok is False else "◐ **tie — not confirmed**")
+
+    # A prediction that "wins" by 0.005 has not been confirmed by anything, and
+    # marking it ✅ would be claiming evidence that is not there.
+    pred3_mark = pred3_ok
+    if pred3_ok is not None and abs(precision - ioi_precision) < 0.05:
+        pred3_mark = None
 
     rows = [
         ["1. blindness before `YY` reappears", mark(blind_ok),
          f"exact zeros at {blind_detail}; at `YY` itself {at_yy[0]}/{at_yy[1]}"],
         [f"2. activation patching recovers ≥ 5 of {gt.PUBLISHED_HEAD_COUNT}", mark(pred2_ok),
          f"recovered {matched}/{gt.PUBLISHED_HEAD_COUNT}"],
-        ["3. precision worse than IOI's", mark(pred3_ok), pred3],
+        ["3. precision worse than IOI's", mark(pred3_mark), pred3],
         ["4. fully generic recovers less", mark(pred4_ok),
          f"size-matched {generic_sized}/{gt.PUBLISHED_HEAD_COUNT} generic "
          f"vs {hand_sized}/{gt.PUBLISHED_HEAD_COUNT} hand-built "
@@ -287,6 +293,17 @@ attributing effect to heads — and it needed no change to answer this.
 **{hit} of the top 4 MLPs by absolute effect are published circuit members**
 ({", ".join(f"MLP {l}" for l in sorted(top4))} recovered against a published
 {", ".join(f"MLP {m}" for m in gt.PUBLISHED_MLPS)}).
+
+The fourth is **MLP 0**, and it is not a false positive so much as a different
+kind of object. Its effect is the largest of any component here and it sits at
+`YY`, not `END` — the paper looks for what MLP 0 depends on and finds nothing
+upstream of it, concluding "it depends primarily on the token embeddings". An
+MLP 0 that behaves as an extended embedding of the year token *should* dominate a
+patch at the year position, and reading that as a discovered circuit component
+would be a mistake the published account already warns against.
+
+MLP 11 is the published member the top-4 cut misses: its effect (+0.131) is real
+but smaller than MLP 8's, so a size-matched top-4 ranks it fifth.
 """
 
 
@@ -341,6 +358,44 @@ def _receiver_side(payload: dict) -> str:
         ", ".join(f"`{h}`" for h in g["cleared"][:6]) or "—",
     ] for g in rs["groups"]]
 
+    # A sender must sit strictly below its receiver, so most of the published
+    # circuit was never eligible to be scored here at all. Reporting 0/7 without
+    # that distinction would present "out of scope" as "measured and failed" —
+    # the same error Phase 3 was careful to avoid for 9.0 and 11.9.
+    ceilings = [
+        min(int(r.split(".")[0]) for r in g["receivers"]) for g in rs["groups"]
+    ]
+    ceiling = max(ceilings) if ceilings else 0
+    eligible = sorted(h for h in gt.ALL_HEADS if h[0] < ceiling)
+    out_of_scope = sorted(h for h in gt.ALL_HEADS if h[0] >= ceiling)
+
+    discovered = {tuple(map(int, h.split("."))) for h in rs["discovered"]}
+    ext_hits = sorted(discovered & set(gt.APPENDIX_UPSTREAM_HEADS))
+
+    scope_note = f"""
+### 0 of 7 — but only {len(eligible)} of the 7 were ever in scope
+
+A sender must sit strictly below its receiver. The chain's only surviving receiver
+group sits at layers {ceiling}+, so of the {gt.PUBLISHED_HEAD_COUNT} published heads
+only **{len(eligible)}** ({", ".join(f"`{l}.{h}`" for l, h in eligible)}) were
+eligible to be scored as senders at all. The other {len(out_of_scope)}
+({", ".join(f"`{l}.{h}`" for l, h in out_of_scope)}) occupy the *receiver* slot in
+this measurement — they are unmeasured, not measured-and-failed, exactly the
+distinction Phase 3 drew for `9.0` and `11.9`.
+
+So the honest reading is **0 of the {len(eligible)} in-scope heads cleared the bar**,
+not 0 of 7. That is still a miss, and it is the clearest negative result in this
+phase.
+
+What the criterion *did* find is the appendix set: {", ".join(f"`{l}.{h}`" for l, h in ext_hits) or "nothing"}.
+Against the **extended 10-head circuit** the plan fixed in advance — the seven plus
+Appendix B's `0.1`, `0.3`, `0.5` — that is
+**{len(ext_hits)}/{len(gt.EXTENDED_CIRCUIT and [h for hs in gt.EXTENDED_CIRCUIT.values() for h in hs])}**.
+The criterion is doing on this task what it did on IOI: finding early heads that
+deliver signal to a receiver without moving the output much, and finding nothing
+among the heads that move the output directly.
+"""
+
     return f"""
 ## The receiver-side criterion, at a recalibrated threshold
 
@@ -366,7 +421,7 @@ a number.
 Scored against the published circuit: **{len(cmp['matches'])}/{gt.PUBLISHED_HEAD_COUNT}**,
 precision {cmp['precision']:.2f}. As in Phase 3 this is a *different definition of
 found* and is reported beside the logit-based numbers rather than merged into them.
-"""
+{scope_note}"""
 
 
 def _search(payload: dict) -> str:
@@ -397,14 +452,17 @@ def _search(payload: dict) -> str:
     scoreable = sum(counts.get(k, 0) for k in ("agreement", "ambiguous", "disagreement"))
     agreed = counts.get("agreement", 0)
 
-    # absolute-position screen: where did it concentrate, and what were those indices?
+    # Absolute-position screen: tally by the *bare index* the search actually saw.
+    # The semantic label is attached afterwards, in parentheses, purely so the
+    # result can be read — the search never had it.
     labels = payload["absolute_labels"]
-    tally: dict[str, int] = {}
+    tally: dict[int, int] = {}
     for entry in payload["absolute_top"][:50]:
-        name = labels.get(str(entry["index"]), "—")
-        tally[name] = tally.get(name, 0) + 1
-    abs_rows = [[f"`t{i}`" if False else k, str(v)]
-                for k, v in sorted(tally.items(), key=lambda kv: -kv[1])]
+        tally[entry["index"]] = tally.get(entry["index"], 0) + 1
+    abs_summary = ", ".join(
+        f"`t{i}` x{v} (= {labels.get(str(i), '—')})"
+        for i, v in sorted(tally.items(), key=lambda kv: -kv[1])
+    )
 
     sem_tally: dict[str, int] = {}
     for entry in payload["semantic_top"][:50]:
@@ -442,12 +500,60 @@ attached. Labels are attached *after* the search, purely to read its output.
 | screen | top positions within its own top 50 |
 |---|---|
 | semantic | {", ".join(f"`{k}` x{v}" for k, v in sem_tally.items())} |
-| absolute | {", ".join(f"{k} x{v}" for k, v in tally.items())} |
+| absolute | {abs_summary} |
+
+Given only bare token indices, the search concentrated on the same positions the
+labelled screen used, and its top five specifications are identical up to the
+position's name. The labels were not carrying the result.
 
 Unlike IOI, this task needed no restriction to a single template or ordering for
 the absolute screen: the published task is one sentence frame with single-token
 substitutions, so every prompt already has the same length and index *k* means the
 same thing in every row.
+"""
+
+
+def _overlap(payload: dict) -> str:
+    """The two published circuits are not disjoint, which qualifies the headline."""
+    shared = sorted(ioi_gt.ALL_HEADS & gt.ALL_HEADS)
+    shared_upstream = sorted(set(gt.APPENDIX_UPSTREAM_HEADS) & ioi_gt.ALL_HEADS)
+    if not shared:
+        return ""
+
+    rows = [[f"`{l}.{h}`", ioi_gt.classify((l, h)), gt.classify((l, h))] for l, h in shared]
+    primary = payload["sweep"]["corruptions"]["yy01"]["metrics"]["logit_diff"]
+    found_shared = [h for h in primary["headline"]["matches"]
+                    if tuple(map(int, h.split("."))) in set(shared)]
+
+    upstream_note = ""
+    if shared_upstream:
+        upstream_note = (
+            f"\nThe overlap extends to the appendix set the path chain surfaced: "
+            + ", ".join(f"`{l}.{h}` is an IOI {ioi_gt.classify((l, h))} head"
+                        for l, h in shared_upstream) + ".\n"
+        )
+
+    return f"""
+## A complication: the two circuits are not disjoint
+
+{len(shared)} of the {gt.PUBLISHED_HEAD_COUNT} published greater-than heads are also
+members of the published IOI circuit.
+
+{_table(rows, ["head", "IOI class", "greater-than class"])}
+
+This phase recovered {len(found_shared)} of those {len(shared)}
+({", ".join(f"`{h}`" for h in found_shared) or "none"}), and Phase 1 had already
+recovered both on IOI. So of the
+{len(primary['headline']['matches'])}/{gt.PUBLISHED_HEAD_COUNT} headline,
+**{len(primary['headline']['matches']) - len(found_shared)} heads are ones no
+earlier phase had ever found**, and {len(found_shared)} were already known to this
+pipeline from the other task.
+{upstream_note}
+That does not make the transfer result circular — the search and the chain were
+given no IOI information, and the heads were rediscovered from this task's own
+counterfactual. But "a second, independent circuit" is not quite the right phrase
+for a target that shares {len(shared)} components with the first, and the number
+above is the honest version of it.
 """
 
 
@@ -600,6 +706,7 @@ def write_report(path: Path, payload: dict) -> None:
         _path_chain(payload),
         _receiver_side(payload),
         _search(payload),
+        _overlap(payload),
         _reuse(payload),
         _conclusions(payload),
     ]
