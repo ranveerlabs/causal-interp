@@ -1,0 +1,35 @@
+{
+  "task": "greater-than",
+  "rule": "threshold = 99% percentile of |path_signal| under a shuffled-source null, rounded up to 2 significant figures",
+  "rule_source": "Phase 3, inherited verbatim; only the null is recalibrated",
+  "null_quantile": 0.99,
+  "significant_figures": 2,
+  "null_seed": 20260815,
+  "n_prompts": 128,
+  "dataset_seed": 0,
+  "n_null_measurements": 72,
+  "raw_quantile": 0.045204490423202515,
+  "threshold": 0.046,
+  "null_max": 0.061536580324172974,
+  "null_median": 0.001173855271190405,
+  "null_mean": 0.003589918138459325,
+  "per_group": [
+    {
+      "label": "round 1",
+      "position": "YY",
+      "receivers": [
+        "9.1.v@YY",
+        "7.10.v@YY",
+        "8.11.v@YY",
+        "6.9.v@YY"
+      ],
+      "n_senders": 72,
+      "max_abs_null": 0.061536580324172974,
+      "mean_abs_null": 0.0035899181581760965,
+      "group_raw_quantile": 0.045204490423202515,
+      "group_threshold": 0.046
+    }
+  ],
+  "written": "2026-08-16 03:00:43",
+  "note": "Computed before any real path_signal measurement on this task, and before the receiver search was run. The rule is Phase 3's and was not modified; the number differs because the null is task-specific."
+}
