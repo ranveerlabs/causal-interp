@@ -1,0 +1,36 @@
+{
+  "task": "docstring",
+  "model": "Attn_Only_4L512W_C4_Code",
+  "rule": "threshold = 99% percentile of |path_signal| under a shuffled-source null, rounded up to 2 significant figures",
+  "rule_source": "Phase 3, inherited verbatim; only the null is recalibrated",
+  "null_quantile": 0.99,
+  "significant_figures": 2,
+  "null_seed": 20260815,
+  "n_prompts": 128,
+  "dataset_seed": 0,
+  "n_null_measurements": 16,
+  "raw_quantile": 0.02908206917345524,
+  "threshold": 0.03,
+  "null_max": 0.0325455516576767,
+  "null_median": 0.0032659810967743397,
+  "null_mean": 0.005511836148798466,
+  "per_group": [
+    {
+      "label": "round 1",
+      "position": "C_def",
+      "receivers": [
+        "3.0.k@C_def",
+        "3.6.k@C_def",
+        "2.3.k@C_def",
+        "3.5.k@C_def"
+      ],
+      "n_senders": 16,
+      "max_abs_null": 0.0325455516576767,
+      "mean_abs_null": 0.0055118363143265015,
+      "group_raw_quantile": 0.02908206917345524,
+      "group_threshold": 0.03
+    }
+  ],
+  "written": "2026-08-17 00:40:42",
+  "note": "Computed before any real path_signal measurement on this model, and before the receiver search was run. The rule is Phase 3's and was not modified; the number differs because the null is model- and task-specific."
+}
