@@ -46,6 +46,7 @@ from torch import Tensor
 from causal_interp.corruption import random_vocab_corruption
 from causal_interp.induction import (
     END,
+    FILTER_LENGTH,
     Generated,
     Proposal,
     Structure,
@@ -314,13 +315,17 @@ def build(
     n: int = 128,
     seed: int = 0,
     model_alias: str = "gpt2-small",
+    filter_mode: str = FILTER_LENGTH,
 ) -> AutoTask:
     """Induce, generate, propose, select — the whole of section 3, end to end.
 
     The returned `AutoTask.task` is a `TaskSpec` that `pipeline.discover()` accepts
     without knowing it was not written by hand.
+
+    `filter_mode` defaults to the pre-registered rule; the amendment's repair has to be
+    named explicitly by the caller.
     """
-    structure = induce(model, examples)
+    structure = induce(model, examples, filter_mode=filter_mode)
     generated = generate(model, structure, n=n, seed=seed)
     if generated.count < 2:
         raise ValueError(

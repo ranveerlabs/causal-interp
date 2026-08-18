@@ -1,0 +1,298 @@
+{
+  "meta": {
+    "seed": 0,
+    "n": 128,
+    "runtime_seconds": 294.1
+  },
+  "rows": [
+    {
+      "pair": [
+        0,
+        1
+      ],
+      "induction": "plan",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 8,
+      "primary": "resample_t8",
+      "span": 2.66583251953125,
+      "size_matched": 6,
+      "matches": [
+        "5.1",
+        "6.9",
+        "7.10",
+        "8.8",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.5384615384615384,
+      "task_valid": 1.0
+    },
+    {
+      "pair": [
+        0,
+        1
+      ],
+      "induction": "shape",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 8,
+      "primary": "resample_t8",
+      "span": 2.66583251953125,
+      "size_matched": 6,
+      "matches": [
+        "5.1",
+        "6.9",
+        "7.10",
+        "8.8",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.5384615384615384,
+      "task_valid": 1.0
+    },
+    {
+      "pair": [
+        4,
+        5
+      ],
+      "induction": "plan",
+      "kept": 2,
+      "slots": 4,
+      "tied": 0,
+      "generated": 12,
+      "primary": "resample_t7",
+      "span": 0.27728986740112305,
+      "size_matched": 3,
+      "matches": [
+        "5.5",
+        "6.9",
+        "7.10"
+      ],
+      "precision": 0.1,
+      "task_valid": 0.8333333333333334
+    },
+    {
+      "pair": [
+        4,
+        5
+      ],
+      "induction": "shape",
+      "failed": "only 1 of 2 examples survive the shape filter; at least 2 are needed for any column to be seen to vary"
+    },
+    {
+      "pair": [
+        6,
+        7
+      ],
+      "induction": "plan",
+      "kept": 2,
+      "slots": 4,
+      "tied": 0,
+      "generated": 12,
+      "primary": "resample_t7",
+      "span": 2.131984233856201,
+      "size_matched": 2,
+      "matches": [
+        "5.5",
+        "7.10"
+      ],
+      "precision": 0.1875,
+      "task_valid": 0.6666666666666666
+    },
+    {
+      "pair": [
+        6,
+        7
+      ],
+      "induction": "shape",
+      "failed": "only 1 of 2 examples survive the shape filter; at least 2 are needed for any column to be seen to vary"
+    },
+    {
+      "pair": [
+        10,
+        11
+      ],
+      "induction": "plan",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 8,
+      "primary": "resample_t8",
+      "span": 2.89613938331604,
+      "size_matched": 5,
+      "matches": [
+        "5.1",
+        "6.9",
+        "7.10",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.35,
+      "task_valid": 1.0
+    },
+    {
+      "pair": [
+        10,
+        11
+      ],
+      "induction": "shape",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 8,
+      "primary": "resample_t8",
+      "span": 2.89613938331604,
+      "size_matched": 5,
+      "matches": [
+        "5.1",
+        "6.9",
+        "7.10",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.35,
+      "task_valid": 1.0
+    },
+    {
+      "pair": [
+        20,
+        21
+      ],
+      "induction": "plan",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 8,
+      "primary": "desync_t7",
+      "span": 3.4552102088928223,
+      "size_matched": 5,
+      "matches": [
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.3,
+      "task_valid": 1.0
+    },
+    {
+      "pair": [
+        20,
+        21
+      ],
+      "induction": "shape",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 8,
+      "primary": "desync_t7",
+      "span": 3.4552102088928223,
+      "size_matched": 5,
+      "matches": [
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.3,
+      "task_valid": 1.0
+    },
+    {
+      "pair": [
+        30,
+        31
+      ],
+      "induction": "plan",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 6,
+      "primary": "resample_t8",
+      "span": 3.865628719329834,
+      "size_matched": 5,
+      "matches": [
+        "5.1",
+        "6.9",
+        "7.10",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.5384615384615384,
+      "task_valid": 1.0
+    },
+    {
+      "pair": [
+        30,
+        31
+      ],
+      "induction": "shape",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 6,
+      "primary": "resample_t8",
+      "span": 3.865628719329834,
+      "size_matched": 5,
+      "matches": [
+        "5.1",
+        "6.9",
+        "7.10",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.5384615384615384,
+      "task_valid": 1.0
+    },
+    {
+      "pair": [
+        2,
+        3
+      ],
+      "induction": "plan",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 8,
+      "primary": "resample_t8",
+      "span": 3.334977626800537,
+      "size_matched": 5,
+      "matches": [
+        "5.1",
+        "6.9",
+        "7.10",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.3888888888888889,
+      "task_valid": 1.0
+    },
+    {
+      "pair": [
+        2,
+        3
+      ],
+      "induction": "shape",
+      "kept": 2,
+      "slots": 3,
+      "tied": 1,
+      "generated": 8,
+      "primary": "resample_t8",
+      "span": 3.334977626800537,
+      "size_matched": 5,
+      "matches": [
+        "5.1",
+        "6.9",
+        "7.10",
+        "8.11",
+        "9.1"
+      ],
+      "precision": 0.3888888888888889,
+      "task_valid": 1.0
+    }
+  ]
+}
