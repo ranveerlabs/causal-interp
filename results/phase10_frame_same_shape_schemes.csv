@@ -1,0 +1,7 @@
+scheme,size_matched,precision,discovered,primary
+resample_t2,2,0.1091,55,False
+resample_t7,2,0.1481,27,False
+resample_t8,5,0.5000,14,True
+desync_t7,5,0.2381,21,False
+desync_END,5,0.3846,13,False
+random_vocab_any,4,0.2692,26,False

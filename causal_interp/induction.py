@@ -54,6 +54,26 @@ ATTEMPT_BUDGET = 50
 # to exist whether or not the last column happens to vary.
 END = "END"
 
+# Which examples survive to be induced from. `FILTER_LENGTH` is section 3.1 of
+# PHASE10_PLAN.md as pre-registered and is the default, so the plan's path is what a
+# caller gets unless it asks for otherwise. `FILTER_SHAPE` is the single repair fixed in
+# PHASE10_AMENDMENT.md, added after step 1 measured what the length rule costs, and is
+# labelled post-hoc everywhere it is reported.
+FILTER_LENGTH = "length"
+FILTER_SHAPE = "shape"
+FILTER_MODES = (FILTER_LENGTH, FILTER_SHAPE)
+
+
+def shape_signature(row: Sequence[int]) -> tuple[int, ...]:
+    """Each column replaced by the first column holding the same token.
+
+    A row's *shape*: which of its positions repeat one another, ignoring what the tokens
+    are. Two renderings of one template share a shape; a rendering the tokenizer split
+    differently does not. Used only by `FILTER_SHAPE`.
+    """
+    first: dict[int, int] = {}
+    return tuple(first.setdefault(token, column) for column, token in enumerate(row))
+
 
 def label_for(index: int, length: int) -> str:
     """Position label for a token index: bare `t{i}`, except the last, which is END.
@@ -143,6 +163,7 @@ class Structure:
     n_examples_given: int
     n_examples_kept: int
     dropped: tuple[dict, ...] = ()
+    filter_mode: str = FILTER_LENGTH
 
     @property
     def slot_columns(self) -> tuple[int, ...]:
@@ -157,6 +178,7 @@ class Structure:
     def as_dict(self, decode: Any = None) -> dict:
         return {
             "length": self.length,
+            "filter_mode": self.filter_mode,
             "n_examples_given": self.n_examples_given,
             "n_examples_kept": self.n_examples_kept,
             "dropped": list(self.dropped),
@@ -178,17 +200,10 @@ def _tokenize(model: Any, text: str) -> tuple[int, ...]:
     return tuple(int(t) for t in model.to_tokens(text)[0])
 
 
-def induce(model: Any, examples: Sequence[str]) -> Structure:
-    """Section 3.1 of the plan: example strings in, slot structure out.
-
-    Raises only when there is nothing to induce from — fewer than two usable examples
-    means no column can be observed to vary, and a `Structure` with no slots is not a
-    task. Everything else that goes wrong is reported rather than raised.
-    """
-    if len(examples) < 2:
-        raise ValueError(f"induction needs at least 2 examples, got {len(examples)}")
-
-    rows = [_tokenize(model, text) for text in examples]
+def _keep_by_length(
+    examples: Sequence[str], rows: Sequence[tuple[int, ...]]
+) -> tuple[list[tuple[int, ...]], list[dict]]:
+    """Section 3.1 as pre-registered: keep the rows whose token length is modal."""
     lengths = Counter(len(row) for row in rows)
     # Modal length, ties broken towards the longer row. The tie-break is a choice the
     # plan did not make; it is arbitrary and is recorded so it is not mistaken for a
@@ -200,13 +215,71 @@ def induce(model: Any, examples: Sequence[str]) -> Structure:
         if len(row) == modal:
             keep.append(row)
         else:
-            dropped.append({"index": i, "length": len(row), "modal": modal, "text": text})
+            dropped.append(
+                {"index": i, "length": len(row), "modal": modal, "reason": "length", "text": text}
+            )
+    return keep, dropped
+
+
+def _keep_by_shape(
+    examples: Sequence[str], rows: Sequence[tuple[int, ...]]
+) -> tuple[list[tuple[int, ...]], list[dict]]:
+    """The amendment's repair: keep the largest group of rows sharing a column shape.
+
+    A strict generalization of `_keep_by_length` — rows of different lengths already
+    have different shapes — and parameter-free, since "the largest group" carries no
+    threshold. Group-size ties go to the group holding the earliest example.
+    """
+    groups: dict[tuple, list[int]] = {}
+    for i, row in enumerate(rows):
+        groups.setdefault((len(row), shape_signature(row)), []).append(i)
+    best = max(groups.values(), key=lambda members: (len(members), -members[0]))
+    chosen = set(best)
+
+    keep = [rows[i] for i in best]
+    dropped = [
+        {
+            "index": i,
+            "length": len(rows[i]),
+            "modal": len(keep[0]),
+            "reason": "shape",
+            "text": examples[i],
+        }
+        for i in range(len(rows))
+        if i not in chosen
+    ]
+    return keep, dropped
+
+
+def induce(
+    model: Any, examples: Sequence[str], *, filter_mode: str = FILTER_LENGTH
+) -> Structure:
+    """Section 3.1 of the plan: example strings in, slot structure out.
+
+    `filter_mode` defaults to the pre-registered rule. `FILTER_SHAPE` is the amendment's
+    repair and has to be asked for by name, so no caller gets it by accident.
+
+    Raises only when there is nothing to induce from — fewer than two usable examples
+    means no column can be observed to vary, and a `Structure` with no slots is not a
+    task. Everything else that goes wrong is reported rather than raised.
+    """
+    if filter_mode not in FILTER_MODES:
+        raise ValueError(f"filter_mode must be one of {FILTER_MODES}, got {filter_mode!r}")
+    if len(examples) < 2:
+        raise ValueError(f"induction needs at least 2 examples, got {len(examples)}")
+
+    rows = [_tokenize(model, text) for text in examples]
+    if filter_mode == FILTER_LENGTH:
+        keep, dropped = _keep_by_length(examples, rows)
+    else:
+        keep, dropped = _keep_by_shape(examples, rows)
 
     if len(keep) < 2:
         raise ValueError(
-            f"only {len(keep)} of {len(examples)} examples tokenize to the modal length "
-            f"{modal}; at least 2 are needed for any column to be seen to vary"
+            f"only {len(keep)} of {len(examples)} examples survive the {filter_mode} "
+            "filter; at least 2 are needed for any column to be seen to vary"
         )
+    modal = len(keep[0])
 
     matrix = list(zip(*keep))  # column-major: matrix[c] is the tuple of values at c
     frame_columns = tuple(c for c, col in enumerate(matrix) if len(set(col)) == 1)
@@ -241,6 +314,7 @@ def induce(model: Any, examples: Sequence[str]) -> Structure:
         n_examples_given=len(examples),
         n_examples_kept=len(keep),
         dropped=tuple(dropped),
+        filter_mode=filter_mode,
     )
 
 

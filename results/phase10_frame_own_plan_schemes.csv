@@ -1,0 +1,6 @@
+scheme,size_matched,precision,discovered,primary
+resample_t5,0,0.0882,34,False
+resample_t8,3,0.1724,29,False
+resample_t9,4,0.3889,18,False
+resample_END,3,0.4000,10,True
+random_vocab_any,1,0.1379,29,False

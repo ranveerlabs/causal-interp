@@ -98,6 +98,38 @@ def main() -> int:
     check("the surviving structure is unchanged",
           with_long.slots == structure.slots and with_long.positions == structure.positions)
 
+    # -- 2b. the amendment's shape filter ----------------------------------
+    print("\n2b. a same-length example that breaks the tie: length keeps it, shape drops it")
+    # Same token count as the rest, but the two name columns disagree — the synthetic
+    # analogue of `" 1509"` splitting as `[" 150", "9"]`. Under the pre-registered rule
+    # this one row dissolves a tie the other sixteen support.
+    breaker = "Then Mary went home and John slept"
+    mixed = examples + [breaker]
+    by_length = induction.induce(model, mixed)
+    by_shape = induction.induce(model, mixed, filter_mode=induction.FILTER_SHAPE)
+
+    check("the breaker is the same length as the rest",
+          len(induction._tokenize(model, breaker)) == structure.length)
+    check("length filter keeps it", by_length.n_examples_kept == len(mixed))
+    check("length filter loses the tie",
+          len(by_length.slots) == 3 and not any(s.is_tied for s in by_length.slots),
+          f"slots {[(s.label, s.columns) for s in by_length.slots]}")
+    check("shape filter drops exactly the breaker",
+          by_shape.n_examples_kept == len(examples)
+          and [d["text"] for d in by_shape.dropped] == [breaker])
+    check("shape filter recovers the tie",
+          by_shape.slots == structure.slots,
+          f"slots {[(s.label, s.columns) for s in by_shape.slots]}")
+    check("shape filter is recorded on the structure",
+          by_shape.filter_mode == induction.FILTER_SHAPE
+          and by_length.filter_mode == induction.FILTER_LENGTH)
+    check("with no odd example the two filters agree",
+          induction.induce(model, examples, filter_mode=induction.FILTER_SHAPE).slots
+          == structure.slots)
+    check("the shape filter still drops a wrong-length row",
+          len(induction.induce(model, examples + [LONG_EXAMPLE],
+                               filter_mode=induction.FILTER_SHAPE).dropped) == 1)
+
     # -- 3. the round-trip filter -----------------------------------------
     print("\n3. the round-trip filter accepts canonical rows and rejects a mangled one")
     check("every input example round-trips",
