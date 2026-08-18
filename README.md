@@ -4,7 +4,7 @@ An autonomous system for discovering and **causally validating** computational m
 
 ## Where this stands
 
-Phases 1–5 validated the method against GPT-2 small's IOI circuit, published in Wang et al. (2022), [*Interpretability in the Wild*](https://arxiv.org/abs/2211.00593) — 26 attention heads in 7 classes, so there is a known answer to check against. **Phase 6 ran the same pipeline against a second published circuit** in that model, **Phase 7 ran it against a circuit in a different model**, and **Phase 8 changed the method itself** so the pipeline reports what its counterfactual cannot see.
+Phases 1–5 validated the method against GPT-2 small's IOI circuit, published in Wang et al. (2022), [*Interpretability in the Wild*](https://arxiv.org/abs/2211.00593) — 26 attention heads in 7 classes, so there is a known answer to check against. **Phase 6 ran the same pipeline against a second published circuit** in that model, **Phase 7 ran it against a circuit in a different model**, **Phase 8 changed the method itself** so the pipeline reports what its counterfactual cannot see, and **Phase 9 tried and failed to make that report trustworthy enough to act on**.
 
 | phase | method | result |
 |---|---|---|
@@ -16,10 +16,11 @@ Phases 1–5 validated the method against GPT-2 small's IOI circuit, published i
 | [6](#phase-6--a-second-published-circuit) | the same pipeline on a second circuit | **7/7** heads and **7/7** receiver specifications on the greater-than circuit, with the causal core **unmodified** — one shared module needed a parameter, and nothing else changed |
 | [7](#phase-7--a-different-model) | **the same pipeline on a different model** | **3/6** — the code transferred with **no existing file changed at all**, and the results are the **worst** of the three circuits. Three of seven pre-registered predictions were wrong |
 | [8](#phase-8--counterfactual-disagreement-as-standard-output) | **several counterfactuals per task, compared automatically** | the pipeline **flags Phase 7's blind spot on its own** — 3/6 → 6/6 on docstring, with the three missed heads named before any answer key is opened. It flags greater-than too, where there was nothing to find |
+| [9](#phase-9--trying-to-tell-a-real-blind-spot-from-noise) | calibrate each counterfactual against its own null | **partial, and the holdout went the wrong way**. Phase 8's shared cutoff is shown indefensible — the ten measured floors span ×400 — but the recalibration is **not a discriminator**: docstring's flag sharpens 18% → 50%, greater-than's stays at 0%, and IOI's *grows* |
 
 Across both definitions of "found", 22 of the 26 published IOI heads have been recovered by something. That figure spans two criteria that disagree about which heads count, and [Phase 3 explains why they are not added together](#why-the-scores-are-not-added-together) — it is not one method's recall.
 
-### What eight phases do and do not demonstrate
+### What nine phases do and do not demonstrate
 
 **Demonstrated.** Given a behaviour to study, this method locates the circuit that implements it, recovers the causal ordering between its parts, and does so without being told where to look. Phase 4 searched for receiver specifications and recovered 16 of the 17 it could score. Phase 5 showed the metric does not need the answer key. **Phase 6 showed none of that was fitted to IOI**, and **Phase 7 showed none of the code was fitted to GPT-2 small** — pointed at a 4-layer attention-only model with a different tokenizer and no MLP blocks, the whole library ran with not one line changed.
 
@@ -28,6 +29,8 @@ Across both definitions of "found", 22 of the 26 published IOI heads have been r
 **And Phase 7 added a second gap, of a different kind.** Recovery fell to 3 of 6 on a denominator no harder than IOI's, and the reason is that the published counterfactual replaces the answer token, which makes the circuit's *routing* heads causally invisible to a metric read off the output. A different published counterfactual finds 5 of 6. **Which parts of a circuit are discoverable is a property of the experiment, not of the circuit** — and nothing in the pipeline's own output distinguished "the circuit is these three heads" from "this counterfactual can only see three of them". Every diagnosis in that phase was made by consulting the answer key.
 
 **Phase 8 closed the second half of that sentence, and only that half.** A task now registers several counterfactual schemes — it cannot register fewer than two — the pipeline runs discovery under all of them, and it prints which heads change status between them. Pointed back at Phase 7's circuit it names `1.2`, `1.4` and `2.0` as counterfactual-dependent **before any answer key is opened**: the three heads Phase 7 missed and diagnosed afterwards. But the same flag fires on the greater-than circuit, where the primary counterfactual was already finding everything, and nothing the pipeline computes tells the two cases apart. It has learned to say *this head list may be an artifact of the experiment*, not *this head list is wrong*.
+
+**Phase 9 attacked exactly that gap and did not close it.** Ten candidate signals were measured before any fix was designed; nine of them do not separate the two cases and several separate in the wrong direction. The one rule worth pre-registering — calibrate each scheme against its own shuffled-source null instead of a shared cutoff — is a real improvement to *what counts as a measurement*, and on a third circuit held out for the purpose it made the flag **louder rather than quieter**. The honest conclusion is a ceiling, not a fix: disagreement detection can now also say *this counterfactual was too weak to be believed*, and it still cannot say *therefore the primary is missing part of the circuit*. Every diagnosis of which flags mattered was made by consulting a published head list.
 
 **The honest ladder**, from what is still supplied to what is now discovered:
 
@@ -42,9 +45,10 @@ Across both definitions of "found", 22 of the 26 published IOI heads have been r
 | circuit components and wiring | discovered (Phases 1–3, 6); **partially** (Phase 7) |
 | generality beyond one circuit | **tested** (Phase 6) — transfers to a second circuit in the same model |
 | **generality beyond one model** | **tested** (Phase 7) — the *code* transfers unchanged; **two method assumptions did not**, and recovery degraded |
-| **knowing what the experiment cannot see** | **partially surfaced** (Phase 8) — the pipeline flags counterfactual-dependent heads with no answer key, but cannot say whether a flag matters |
+| **knowing what the experiment cannot see** | **partially surfaced** (Phase 8) — the pipeline flags counterfactual-dependent heads with no answer key |
+| **knowing whether a flag matters** | **not achieved** (Phase 9) — a per-scheme null floor makes the criterion defensible and does **not** separate a real blind spot from ordinary disagreement; flag precision runs 50 % / 0 % / 26 % across three circuits |
 
-The line still sits between the top two rows and the rest. Above it is untouched — a next phase attacking it would need a validation strategy that does not exist here, because a published circuit cannot check task construction when the published task *is* what was supplied. What Phase 7 changed is the row below it: "corruption content is supplied" used to be a statement about *precision*, and is now a statement about *what the method can see at all*. What **Phase 8** changed is the last row, which did not exist before it: detecting that blindness moved from something a human catches after the fact to something the pipeline prints unprompted — a real step, and a partial one, because the warning it prints cannot be graded without the answer key it is supposed to replace.
+The line still sits between the top two rows and the rest. Above it is untouched — a next phase attacking it would need a validation strategy that does not exist here, because a published circuit cannot check task construction when the published task *is* what was supplied. What Phase 7 changed is the row below it: "corruption content is supplied" used to be a statement about *precision*, and is now a statement about *what the method can see at all*. What **Phase 8** changed is the second-to-last row, which did not exist before it: detecting that blindness moved from something a human catches after the fact to something the pipeline prints unprompted. **Phase 9 tried to add the row below it and failed**, which is why that row reads *not achieved* rather than *partial* — the warning the pipeline prints still cannot be graded without the answer key it is supposed to stand in for.
 
 ## Goal
 
@@ -68,7 +72,7 @@ So every phase so far runs against a small open model with an **already-publishe
 
 > Do the system's conclusions match the published ground truth?
 
-Only once the method demonstrably rediscovers what is already known does it earn the right to be pointed at anything unfamiliar. Four phases have now failed a prediction they made about themselves — Phase 7 failed three of seven, Phase 8 two of eight — which is the argument for keeping the answer key in reach a while longer. Phase 7 is also the sharpest evidence for the policy itself: it produced a clean, plausible, internally consistent circuit claim that was **missing half the mechanism**, and only the published head list revealed that.
+Only once the method demonstrably rediscovers what is already known does it earn the right to be pointed at anything unfamiliar. Five phases have now failed a prediction they made about themselves — Phase 7 failed three of seven, Phase 8 two of eight, Phase 9 four of eight — which is the argument for keeping the answer key in reach a while longer. Phase 7 is also the sharpest evidence for the policy itself: it produced a clean, plausible, internally consistent circuit claim that was **missing half the mechanism**, and only the published head list revealed that.
 
 ---
 
@@ -398,6 +402,36 @@ Six of eight predictions held. Both misses are in the report as they came out: t
 
 The schemes are still **authored per task**. Docstring got its alternates free from the paper; greater-than's `xx_mismatch` was designed for this phase by a person reasoning about the task's mechanism, and is labelled `authored` rather than counted as published wherever it appears. The generic vocabulary-substitution schemes need no task knowledge and can be registered anywhere — and they are the lowest-power schemes here and the largest source of flagged heads in no published circuit. Blindness that *every* registered scheme shares is still reported as agreement.
 
+Which leaves the flag itself unusable without a human. That is what Phase 9 went after.
+
+## Phase 9 — trying to tell a real blind spot from noise
+
+**A better criterion, and not the discriminator it was meant to be.** Full numbers: **[results/PHASE9_REPORT.md](results/PHASE9_REPORT.md)**. The order of this phase is its main methodological claim and is checkable in git: the measurements came first, in **[results/PHASE9_CHARACTERIZATION.md](results/PHASE9_CHARACTERIZATION.md)**; then the rule, the scoring table, the holdout and eight predictions, in **[results/PHASE9_PLAN.md](results/PHASE9_PLAN.md)**; then the runs.
+
+### Measure first
+
+Ten candidate signals were computed over all 33 heads Phase 8 flagged, from stored results, before anything was designed. **Nine do not separate the two cases.** Several separate in the wrong direction: any statistic normalized by a scheme's median or its strongest head is dominated by how many dead heads a model has, so GPT-2 small's noise outranks `attn-only-4l`'s real finds. Only raw effect magnitude showed visible separation, and only in the upper tail.
+
+### The rule
+
+Phase 3's rule on a new channel, per scheme: **θ(s) = the 99th percentile of |normalized recovery| under a shuffled-source null sweep**, replacing Phase 8's shared 0.02. The diagnosis is that normalized recovery divides by each scheme's own clean-vs-corrupted span, so one cutoff cannot mean the same thing under two counterfactuals. Nothing else changed, so the two runs differ in the criterion alone.
+
+**That much is established.** The ten measured floors span a factor of 400 — from 0.0077 to 3.3. Docstring's `random_vocab_any` has a null whose 99th percentile is **3.3**: patching a head with an activation from a *different prompt* routinely moves that metric by several times the entire clean-to-corrupted span. It contributed 17 of docstring's flags under Phase 8's cutoff and contributes none under its own floor. Phase 8's shared cutoff was not defensible.
+
+### And it is still not a discriminator
+
+| circuit | known case | heads flagged | flag precision |
+|---|---|---|---|
+| docstring | real blind spot | 17 → **4** | 18 % → **50 %** |
+| greater-than | no blind spot | 16 → **8** | 0 % → **0 %** |
+| **IOI** (holdout) | real blind spot | 15 → **19** | 20 % → **26 %** |
+
+IOI is a genuine holdout: Phase 8 registered its four schemes and deliberately never ran it, and its expected behaviour was fixed in the plan from Phase 1's finding that `s2_swap` is provably blind before S2 while `abc` is not. Its calibrated blind spot **grew**, because `abc` and `random_vocab_s2` came out with floors *below* 0.02 and became more sensitive while the primary's floor rose to 0.058 and cost it three published heads of its own (18/26 → 15/26). Calibration cuts both ways.
+
+**The result, stated as the plan required if it came out this way:** a per-scheme null floor separates *this counterfactual was too weak to be believed* from *this counterfactual measured something*. It does **not** separate *measured something the primary is blind to* from *measured something outside the circuit* — both are sound measurements under a real counterfactual — and that second distinction is the one a reader needs. Four of eight predictions held.
+
+n = 3: three circuits, two models, one architecture family, and the rule was chosen while looking at two of the three.
+
 ---
 
 ## Stack
@@ -452,7 +486,7 @@ Patching is easy to get subtly wrong in ways that still produce reasonable-looki
 ```bash
 python scripts/check_patching.py             # GPT-2 small + IOI      — expect: PATCHING OK
 python scripts/check_patching_docstring.py   # attn-only-4l + docstring — expect: PATCHING OK
-python scripts/check_schemes.py              # Phase 8's registry + agreement — expect: SCHEMES OK
+python scripts/check_schemes.py              # Phase 8's registry + Phase 9's null — expect: SCHEMES OK
 ```
 
 The second is Phase 7's counterpart, not a replacement: two of its checks only exist on an attention-only model. With no MLPs, patching every head at every position must reproduce the clean run at the final token *exactly* (it does, to `1e-5`, against `0.05` on GPT-2 small), and patching `hook_mlp_out` must be a silent no-op rather than an error (it is, exactly `0.0` at every layer).
@@ -493,6 +527,16 @@ python scripts/run_phase8_multischeme.py --report-only            # rebuild the 
 ```
 
 Each sweeps every scheme its task registers, across activation patching, the path chain and the receiver-spec search, and prints the cross-scheme comparison before it opens any answer key.
+
+Phase 9 recalibrates that comparison and tests the recalibration on a third circuit. The first two reuse Phase 8's committed sweeps and measure only the nulls; IOI has no stored multi-scheme run and measures both:
+
+```bash
+python scripts/phase9_characterize.py                             # <1 min, no GPU
+python scripts/run_phase9_calibration.py --circuit docstring      # ~1 min
+python scripts/run_phase9_calibration.py --circuit greater_than   # ~4 min
+python scripts/run_phase9_calibration.py --circuit ioi            # ~18 min, the holdout
+python scripts/run_phase9_calibration.py --report-only
+```
 
 Phase 4 is the longest single sweep — two exhaustive grids, 9,936 forward passes. Phases 4, 5, 6 and 7 all support `--report-only`, which rebuilds their reports from the stored results without repeating the sweep.
 
@@ -538,18 +582,24 @@ scripts/
   phase7_report.py            # Phase 7 report
   run_phase8_multischeme.py   # Phase 8: both circuits under every registered scheme
   phase8_report.py            # Phase 8 report
+  phase9_characterize.py      # Phase 9 step 1: the measurement that precedes the fix
+  run_phase9_calibration.py   # Phase 9: per-scheme null floors, and the IOI holdout
+  phase9_report.py            # Phase 9 report
 results/
-  PHASE1_REPORT.md … PHASE8_REPORT.md
+  PHASE1_REPORT.md … PHASE9_REPORT.md
   PHASE4_SEARCH_SPACE.md       # the space and budget, committed before the search code
   PHASE5_AUDIT.md              # what each hand-built piece encodes, committed before the tests
   PHASE6_PLAN.md               # target, ground truth and predictions, committed before the code
   PHASE7_PLAN.md               # the same, for a different model, plus an advance code audit
   PHASE8_PLAN.md               # the registry design and the authored scheme, before the code
+  PHASE9_CHARACTERIZATION.md   # ten candidate signals, committed before the rule existed
+  PHASE9_PLAN.md               # the calibration rule, the scoring table and the holdout
   phase3_preregistration.json  # the threshold, committed before the results existed
   phase6_preregistration.json  # the recalibrated threshold, same rule, same ordering
   phase7_preregistration.json  # recalibrated a third time — 0.11, 0.046, 0.03
   phase1_results.json … phase7_results.json
   phase8_docstring.json / phase8_greater_than.json   # per-scheme effects + agreement
+  phase9_*.json / phase9_*_calibration.csv           # null floors, before/after verdicts
   head_effects_*.csv / component_effects_*.csv / path_effects_*.csv
   receiver_signals.csv / receiver_search_*.csv / phase5_metric_effects.csv
   phase6_*.csv / phase7_*.csv / phase8_*_agreement.csv
