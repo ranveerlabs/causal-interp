@@ -56,6 +56,7 @@ from torch import Tensor
 from transformer_lens import HookedTransformer
 
 from causal_interp.corruption import random_vocab_corruption
+from causal_interp.schemes import Scheme, TaskSpec
 
 # The two published word lists, copied verbatim from `acdc/docstring/prompts.py`.
 # Both are checked against the tokenizer in the constructor rather than trusted.
@@ -158,6 +159,46 @@ CORRUPTIONS: tuple[str, ...] = (
 
 PUBLISHED_CORRUPTIONS: tuple[str, ...] = ("random_random", "random_def", "random_answer")
 GENERIC_CORRUPTIONS: tuple[str, ...] = ("random_vocab_cdef", "random_vocab_any")
+
+# Phase 8: the same five schemes, declared rather than listed. What each one *breaks*
+# and whether it leaves the answer in the prompt were the facts Phase 7 had to
+# reconstruct by hand after seeing a low recall number; here they are registered with
+# the scheme, and `causal_interp.pipeline` runs discovery under every one of them.
+SCHEMES: dict[str, Scheme] = {
+    "random_random": Scheme(
+        name="random_random",
+        provenance="published",
+        breaks="replaces the definition arguments and the docstring arguments",
+        preserves_answer=False,
+        primary=True,
+    ),
+    "random_def": Scheme(
+        name="random_def",
+        provenance="published",
+        breaks="replaces the non-answer definition arguments, breaking the induction match that selects the answer",
+        preserves_answer=True,
+    ),
+    "random_answer": Scheme(
+        name="random_answer",
+        provenance="published",
+        breaks="replaces the answer argument in the definition",
+        preserves_answer=False,
+    ),
+    "random_vocab_cdef": Scheme(
+        name="random_vocab_cdef",
+        provenance="generic",
+        breaks="substitutes a uniformly drawn vocabulary token at the C_def anchor",
+        preserves_answer=False,
+    ),
+    "random_vocab_any": Scheme(
+        name="random_vocab_any",
+        provenance="generic",
+        breaks="substitutes a uniformly drawn vocabulary token anywhere in the prompt",
+        preserves_answer=False,
+    ),
+}
+
+DISCOVERY_SCHEMES: tuple[str, ...] = CORRUPTIONS
 
 
 @dataclass(frozen=True)
@@ -456,3 +497,16 @@ def _template(
 {def_and_desc}
 {doc_lines_str}
 {param_prefix}"""
+
+
+# The Phase 8 registration. Kept at the end of the module because it names the dataset
+# class defined above; nothing else in this file depends on it.
+TASK = TaskSpec(
+    name="docstring",
+    dataset=DocstringDataset,
+    positions=POSITIONS,
+    schemes=SCHEMES,
+    discovery_schemes=DISCOVERY_SCHEMES,
+    metric_label="logit difference (answer argument vs best wrong argument)",
+    model_alias="attn-only-4l",
+)

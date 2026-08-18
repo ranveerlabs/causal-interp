@@ -31,6 +31,7 @@ from torch import Tensor
 from transformer_lens import HookedTransformer
 
 from causal_interp.corruption import random_vocab_corruption
+from causal_interp.schemes import Scheme, TaskSpec
 
 # Templates end immediately before the answer token. {a} and {b} are the two
 # names of the opening clause in order; {s} is the repeated subject. Adapted
@@ -85,6 +86,40 @@ POSITIONS: tuple[str, ...] = ("IO", "IO+1", "S1", "S1+1", "S2", "S2+1", "END")
 CORRUPTIONS: tuple[str, ...] = ("s2_swap", "abc", "random_vocab_s2", "random_vocab_any")
 
 GENERIC_CORRUPTIONS: tuple[str, ...] = ("random_vocab_s2", "random_vocab_any")
+
+# Phase 8's registration. IOI is the one task that already had two hand-built schemes,
+# and Phases 1 and 2 reported them side by side by hand — which is the thing Phase 8
+# turns into pipeline output. Registered here so the registry covers every task in the
+# repo; **Phase 8 does not re-run IOI**, and no Phase 8 claim rests on it.
+SCHEMES: dict[str, Scheme] = {
+    "s2_swap": Scheme(
+        name="s2_swap",
+        provenance="published",
+        breaks="replaces the repeated subject at S2 with the indirect object's name, reversing the answer",
+        preserves_answer=False,
+        primary=True,
+    ),
+    "abc": Scheme(
+        name="abc",
+        provenance="published",
+        breaks="replaces both subject mentions with a third name, so no name is repeated",
+        preserves_answer=True,
+    ),
+    "random_vocab_s2": Scheme(
+        name="random_vocab_s2",
+        provenance="generic",
+        breaks="substitutes a uniformly drawn vocabulary token at the S2 anchor",
+        preserves_answer=False,
+    ),
+    "random_vocab_any": Scheme(
+        name="random_vocab_any",
+        provenance="generic",
+        breaks="substitutes a uniformly drawn vocabulary token anywhere in the prompt",
+        preserves_answer=False,
+    ),
+}
+
+DISCOVERY_SCHEMES: tuple[str, ...] = CORRUPTIONS
 
 
 @dataclass(frozen=True)
@@ -323,3 +358,16 @@ def _name_token_id(model: HookedTransformer, name: str) -> int:
     if len(ids) != 1:
         raise AssertionError(f"name {name!r} is not a single token: {ids}")
     return ids[0]
+
+
+# The Phase 8 registration, at the end of the module because it names the dataset class
+# defined above. Nothing else in this file depends on it.
+TASK = TaskSpec(
+    name="ioi",
+    dataset=IOIDataset,
+    positions=POSITIONS,
+    schemes=SCHEMES,
+    discovery_schemes=DISCOVERY_SCHEMES,
+    metric_label="logit difference (indirect object vs subject)",
+    model_alias="gpt2-small",
+)

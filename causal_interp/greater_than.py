@@ -41,11 +41,18 @@ from torch import Tensor
 from transformer_lens import HookedTransformer
 
 from causal_interp.corruption import random_vocab_corruption
+from causal_interp.schemes import Scheme, TaskSpec
 
 # The paper's template. A single template, unlike IOI's eight: the published task
 # is this one sentence frame, and every prompt therefore has identical length,
 # which is what lets the absolute-position search index tokens directly.
 TEMPLATE = "The {noun} lasted from the year {century}{yy} to the year {century}"
+
+# The same frame with the two century slots addressed separately. Phase 8's authored
+# counterfactual changes the *start* year's century and leaves the final one alone, so
+# it needs a renderer that can tell them apart. `TEMPLATE` is left exactly as it was:
+# every prompt Phases 1-6 built is still built from the same string.
+TEMPLATE_SPLIT = "The {noun} lasted from the year {c1}{yy} to the year {c2}"
 
 # Event nouns that can sensibly last a span of years. The paper draws 120 from
 # FrameNet; this list is filtered to single-token-with-leading-space under the
@@ -88,9 +95,67 @@ POSITIONS: tuple[str, ...] = ("NOUN", "XX1", "YY", "YY+1", "END")
 # IOI had two, but greater-than has exactly one published counterfactual, and
 # inventing a second would be new hand-tuning of the kind Phase 6 exists to detect.
 # The `random_vocab_*` pair is the generic Phase 5 code path, shared verbatim.
+# `CORRUPTIONS` is frozen at the three schemes Phase 6 swept, so re-running that phase
+# reproduces it exactly. Phase 8's authored alternate is registered in `SCHEMES` below
+# and reached through `DISCOVERY_SCHEMES`, which is what the multi-scheme pipeline uses.
 CORRUPTIONS: tuple[str, ...] = ("yy01", "random_vocab_yy", "random_vocab_any")
 
 GENERIC_CORRUPTIONS: tuple[str, ...] = ("random_vocab_yy", "random_vocab_any")
+
+# Phase 8. Phase 6 recorded that greater-than has exactly one published counterfactual
+# and that inventing a second would be hand-tuning of the kind Phase 6 existed to
+# detect. Phase 7 then showed that running on one counterfactual decides which parts of
+# a circuit are visible at all, so a second one has to exist -- and it is labelled
+# `authored` wherever it appears, because that is exactly what it is.
+#
+# `random_def` does not transfer from the docstring task: it is defined in terms of the
+# argument name the docstring points at, and greater-than has no pointer and no answer
+# *token*. What transfers is the principle. The published scheme changes the value that
+# gets moved (`YY`); the alternate leaves that value identical and breaks the structure
+# that makes the task well posed:
+#
+#     clean        The war lasted from the year 1732 to the year 17
+#     yy01         The war lasted from the year 1701 to the year 17
+#     xx_mismatch  The war lasted from the year 1432 to the year 17
+#
+# One token changes either way, so clean and corrupted activations still live at the
+# same index. The design, and two rejected candidates, are in results/PHASE8_PLAN.md.
+XX_MISMATCH = "xx_mismatch"
+
+SCHEMES: dict[str, Scheme] = {
+    "yy01": Scheme(
+        name="yy01",
+        provenance="published",
+        breaks="sets the start year to 01, making the greater-than constraint vacuous",
+        preserves_answer=False,
+        primary=True,
+    ),
+    XX_MISMATCH: Scheme(
+        name=XX_MISMATCH,
+        provenance="authored",
+        breaks=(
+            "replaces the start year's century, breaking the correspondence between "
+            "the two years while leaving YY untouched"
+        ),
+        preserves_answer=True,
+    ),
+    "random_vocab_yy": Scheme(
+        name="random_vocab_yy",
+        provenance="generic",
+        breaks="substitutes a uniformly drawn vocabulary token at the YY anchor",
+        preserves_answer=False,
+    ),
+    "random_vocab_any": Scheme(
+        name="random_vocab_any",
+        provenance="generic",
+        breaks="substitutes a uniformly drawn vocabulary token anywhere in the prompt",
+        preserves_answer=False,
+    ),
+}
+
+DISCOVERY_SCHEMES: tuple[str, ...] = (
+    "yy01", XX_MISMATCH, "random_vocab_yy", "random_vocab_any",
+)
 
 
 @dataclass(frozen=True)
@@ -102,6 +167,7 @@ class GreaterThanPrompt:
     noun: str
     century: int
     yy: int
+    corrupt_century: int | None = None   # xx_mismatch only: the century it substituted
 
 
 class GreaterThanDataset:
@@ -118,8 +184,8 @@ class GreaterThanDataset:
         corruption: str = "yy01",
         seed: int = 0,
     ) -> None:
-        if corruption not in CORRUPTIONS:
-            raise ValueError(f"corruption must be one of {CORRUPTIONS}, got {corruption!r}")
+        if corruption not in SCHEMES:
+            raise ValueError(f"corruption must be one of {tuple(SCHEMES)}, got {corruption!r}")
 
         self.corruption = corruption
         self.seed = seed
@@ -128,6 +194,12 @@ class GreaterThanDataset:
         nouns = self._single_token_nouns(model)
         self.valid_years = _valid_years(model)
         rng = random.Random(seed)
+        # A separate stream for the one draw only `xx_mismatch` makes. Sharing `rng`
+        # would shift every later draw, so the *clean* prompts under the authored
+        # scheme would no longer be the clean prompts under the published one — and a
+        # cross-scheme comparison would then be reading a different prompt sample as
+        # well as a different counterfactual. Verified by scripts/check_schemes.py.
+        self._alt_rng = random.Random(seed + 1)
         self.prompts = [self._make_prompt(rng, nouns) for _ in range(n)]
 
         device = model.cfg.device
@@ -177,19 +249,47 @@ class GreaterThanDataset:
         century = rng.choice(sorted(self.valid_years))
         yy = rng.choice(self.valid_years[century])
 
-        clean = TEMPLATE.format(noun=noun, century=century, yy=f"{yy:02d}")
+        clean = _render(noun, century, yy, century)
+        alt: int | None = None
         if self.corruption in GENERIC_CORRUPTIONS:
             # Generic corruptions act on tokens, not text: a uniformly drawn
             # vocabulary entry has no spelling to substitute into a template. The
             # corrupted text is the clean text, as in IOIDataset, and the token
             # substitution happens after tokenization.
             corrupted = clean
+        elif self.corruption == XX_MISMATCH:
+            # Phase 8's authored alternate: a different century opens the start year,
+            # so `YY` — the value the circuit's year heads move — is bit-identical
+            # between the two runs, and what breaks is the relation between the two
+            # years rather than the quantity being compared. The metric still reads
+            # `YY` from the clean prompt, so the three numbers stay comparable.
+            alt = self._alt_century(self._alt_rng, century, yy)
+            corrupted = _render(noun, alt, yy, century)
         else:
             # The published counterfactual: the start year becomes 01, so the
             # greater-than constraint becomes vacuous while everything else — the
             # sentence, the century, the token count — is untouched.
-            corrupted = TEMPLATE.format(noun=noun, century=century, yy=f"{CORRUPT_YY:02d}")
-        return GreaterThanPrompt(clean, corrupted, noun, century, yy)
+            corrupted = _render(noun, century, CORRUPT_YY, century)
+        return GreaterThanPrompt(clean, corrupted, noun, century, yy, alt)
+
+    def _alt_century(self, rng: random.Random, century: int, yy: int) -> int:
+        """A different century whose pairing with this `yy` still splits as two tokens.
+
+        Drawn from the same filtered table the clean prompt is drawn from, so the
+        corrupted prompt has the same token count as the clean one by construction
+        rather than by hope. Raising here is correct: silently falling back to the
+        clean century would produce a counterfactual that corrupts nothing.
+        """
+        options = [
+            c for c in sorted(self.valid_years)
+            if c != century and yy in self.valid_years[c]
+        ]
+        if not options:
+            raise RuntimeError(
+                f"no alternative century tokenizes with start year {yy:02d}; "
+                f"{XX_MISMATCH} cannot be built for this prompt"
+            )
+        return rng.choice(options)
 
     def _apply_generic_corruption(self, seed: int) -> tuple[Tensor, Tensor]:
         """Corrupt by substituting a uniformly drawn vocabulary token.
@@ -296,6 +396,11 @@ class GreaterThanDataset:
         }
 
 
+def _render(noun: str, century_start: int, yy: int, century_end: int) -> str:
+    """One prompt. `century_start` and `century_end` differ only under `xx_mismatch`."""
+    return TEMPLATE_SPLIT.format(noun=noun, c1=century_start, yy=f"{yy:02d}", c2=century_end)
+
+
 def _splits_as_two_tokens(model: HookedTransformer, century: int, yy: int) -> bool:
     """Does " {century}{yy}" tokenize as exactly [" century", "yy"]?"""
     ids = model.tokenizer.encode(f" {century}{yy:02d}", add_special_tokens=False)
@@ -337,3 +442,16 @@ def _century_token_id(model: HookedTransformer, century: int) -> int:
     if len(ids) != 1:
         raise AssertionError(f"century {century} is not a single token: {ids}")
     return ids[0]
+
+
+# The Phase 8 registration. Four schemes: the paper's, one authored for this project,
+# and the two generic ones, which need no knowledge of the task at all.
+TASK = TaskSpec(
+    name="greater-than",
+    dataset=GreaterThanDataset,
+    positions=POSITIONS,
+    schemes=SCHEMES,
+    discovery_schemes=DISCOVERY_SCHEMES,
+    metric_label="probability difference (years > YY minus years <= YY)",
+    model_alias="gpt2-small",
+)
