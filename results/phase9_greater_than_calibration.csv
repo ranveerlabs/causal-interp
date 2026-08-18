@@ -1,0 +1,27 @@
+head,published_class,flagged_before,flagged_after,effect_yy01,effect_xx_mismatch,effect_random_vocab_yy,effect_random_vocab_any,over_theta_yy01,over_theta_xx_mismatch,over_theta_random_vocab_yy,over_theta_random_vocab_any
+0.1,,False,False,0.030744,0.108739,-0.003736,-0.013789,True,True,False,False
+0.10,,True,True,-0.009430,0.038414,0.000558,-0.006512,False,True,False,False
+1.5,,True,False,-0.002236,0.021994,-0.001611,-0.002081,False,False,False,False
+3.0,,True,True,0.000962,0.039699,-0.000142,-0.001470,False,True,False,False
+3.3,,True,False,0.001849,0.024145,-0.001518,0.002667,False,False,False,False
+4.4,,True,False,-0.003517,0.027832,-0.000742,-0.002184,False,False,False,False
+4.7,,True,False,-0.005120,-0.009823,-0.003223,-0.030661,False,False,False,False
+4.10,,True,True,-0.007147,-0.078930,0.001015,0.001008,False,True,False,False
+4.11,,True,True,0.001914,0.044480,-0.001875,0.061294,False,True,False,True
+5.0,,True,True,-0.001107,-0.002193,-0.036457,0.001525,False,False,True,False
+5.1,year head -> MLP 8,False,False,0.055836,0.005057,-0.014429,0.009288,True,False,True,False
+5.5,year head -> MLP 8,False,False,0.052048,0.153685,-0.015178,0.007443,True,True,True,False
+5.6,,True,False,0.002372,0.006232,-0.001526,0.022981,False,False,False,False
+6.8,,True,False,-0.001228,-0.005764,-0.002255,0.033720,False,False,False,False
+6.9,year head -> MLP 8,False,False,0.075923,0.038140,-0.037819,-0.006484,True,True,True,False
+6.11,,True,False,0.002400,-0.002277,-0.000926,0.032510,False,False,False,False
+7.0,,True,False,-0.001263,0.000926,0.001349,0.025005,False,False,False,False
+7.6,,True,False,-0.001557,0.003688,0.005667,0.023469,False,False,False,False
+7.10,year head -> MLP 8,False,False,0.134557,0.142782,-0.008683,0.000825,True,True,False,False
+7.11,,False,True,nan,nan,nan,nan,False,False,False,False
+8.5,,True,True,0.000705,0.039245,0.000484,0.087345,False,True,False,True
+8.6,,True,True,-0.004361,-0.006136,-0.024405,-0.031946,False,False,True,False
+8.8,year head -> MLP 8,False,False,0.029261,-0.008904,-0.010055,-0.000525,True,False,False,False
+8.11,year head -> MLP 8,False,False,0.082801,0.029301,0.001521,0.007399,True,False,False,False
+9.1,year head -> MLP 9,False,False,0.252204,0.067491,0.002179,0.040578,True,True,False,False
+10.7,,False,False,-0.040144,-0.023543,0.002558,-0.005923,True,False,False,False

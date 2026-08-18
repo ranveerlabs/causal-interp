@@ -1,0 +1,27 @@
+head,published_class,flagged_before,flagged_after,effect_random_random,effect_random_def,effect_random_answer,effect_random_vocab_cdef,effect_random_vocab_any,over_theta_random_random,over_theta_random_def,over_theta_random_answer,over_theta_random_vocab_cdef,over_theta_random_vocab_any
+0.0,,False,True,0.047643,0.008290,0.091003,0.087168,0.031470,False,False,True,False,False
+0.1,,False,False,0.028231,0.040373,0.064599,0.029371,0.031001,False,False,False,False,False
+0.2,,True,False,0.003029,0.023089,0.005868,0.006235,-0.094837,False,False,False,False,False
+0.4,,True,False,0.001055,-0.013780,0.001681,0.001843,0.069456,False,False,False,False,False
+0.5,duplicate token,False,False,0.088846,0.175171,0.185135,0.119510,0.088710,True,True,True,True,False
+0.6,,True,False,0.002265,-0.017978,0.008094,0.008872,0.051405,False,False,False,False,False
+1.0,,True,True,0.009206,0.229364,0.029452,0.015564,-0.120018,False,True,False,False,False
+1.1,,True,False,0.003610,0.033651,0.002578,0.005247,0.104588,False,False,False,False,False
+1.2,duplicate token,True,False,-0.015973,0.007048,-0.005626,-0.025184,0.159170,False,False,False,False,False
+1.4,induction + fuzzy previous token,True,True,-0.015609,0.602294,0.000132,0.001263,0.273341,False,True,False,False,False
+1.5,,True,False,0.006714,0.007701,0.004529,-0.001209,0.021426,False,False,False,False,False
+1.7,,True,False,0.002849,0.012430,-0.000889,0.004729,-0.059988,False,False,False,False,False
+2.0,fuzzy previous token,True,True,0.005696,1.090619,0.004106,0.004052,0.346385,False,True,False,False,False
+2.1,,True,False,0.003045,0.062238,0.003729,-0.002093,0.043061,False,False,False,False,False
+2.2,,False,False,0.043588,0.081226,0.025330,-0.062709,-0.209485,False,False,False,False,False
+2.3,,False,False,0.114257,0.146318,0.086580,0.072425,-0.050493,True,True,True,False,False
+2.4,,True,False,-0.007969,-0.011696,0.000375,0.000759,0.089245,False,False,False,False,False
+2.5,,True,False,0.015509,0.049189,0.026335,0.027907,-0.026235,False,False,False,False,False
+2.6,,True,False,-0.004250,0.044648,0.002701,0.000403,0.082642,False,False,False,False,False
+2.7,,True,False,-0.003288,0.011106,-0.001625,0.000712,0.051335,False,False,False,False,False
+3.0,argument mover,False,False,0.588424,0.878940,0.524641,0.454269,0.780585,True,True,True,True,False
+3.2,,True,False,0.008121,0.002234,0.004143,0.003121,-0.029375,False,False,False,False,False
+3.3,,False,False,0.023843,0.032410,0.025193,0.016574,-0.039826,False,False,False,False,False
+3.4,,True,False,0.009406,0.024433,0.010996,0.006940,0.073445,False,False,False,False,False
+3.5,,False,False,0.032418,0.039040,0.036880,0.029856,-0.004099,False,False,False,False,False
+3.6,argument mover,False,False,0.550798,0.604564,0.498675,0.420990,0.349566,True,True,True,True,False

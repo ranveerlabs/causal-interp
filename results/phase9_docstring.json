@@ -1,0 +1,1746 @@
+{
+  "meta": {
+    "circuit": "docstring",
+    "task": "docstring",
+    "role": "known real blind spot (Phase 7)",
+    "model": "Attn_Only_4L512W_C4_Code",
+    "model_alias": "attn-only-4l",
+    "n_layers": 4,
+    "n_heads": 8,
+    "prompts": 128,
+    "seed": 0,
+    "metric": "logit_diff",
+    "phase8_threshold": 0.02,
+    "null_quantile": 0.99,
+    "null_seed": 20260815,
+    "significant_figures": 2,
+    "real_effects_source": "phase8",
+    "published_head_count": 6,
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "torch": "2.11.0+cu128",
+    "transformer_lens": "3.7.1",
+    "python": "3.12.10",
+    "runtime_seconds": 72.0
+  },
+  "schemes": [
+    {
+      "scheme": "random_random",
+      "provenance": "published",
+      "breaks": "replaces the definition arguments and the docstring arguments",
+      "preserves_answer": false,
+      "primary": true
+    },
+    {
+      "scheme": "random_def",
+      "provenance": "published",
+      "breaks": "replaces the non-answer definition arguments, breaking the induction match that selects the answer",
+      "preserves_answer": true,
+      "primary": false
+    },
+    {
+      "scheme": "random_answer",
+      "provenance": "published",
+      "breaks": "replaces the answer argument in the definition",
+      "preserves_answer": false,
+      "primary": false
+    },
+    {
+      "scheme": "random_vocab_cdef",
+      "provenance": "generic",
+      "breaks": "substitutes a uniformly drawn vocabulary token at the C_def anchor",
+      "preserves_answer": false,
+      "primary": false
+    },
+    {
+      "scheme": "random_vocab_any",
+      "provenance": "generic",
+      "breaks": "substitutes a uniformly drawn vocabulary token anywhere in the prompt",
+      "preserves_answer": false,
+      "primary": false
+    }
+  ],
+  "floors": {
+    "random_random": {
+      "scheme": "random_random",
+      "threshold": 0.07,
+      "raw_quantile": 0.06985236704349518,
+      "quantile": 0.99,
+      "null_seed": 20260815,
+      "n_cells": 224,
+      "null_median": 0.0005026970757171512,
+      "null_mean": 0.004527784883975983,
+      "null_max": 0.23999816179275513,
+      "null_per_head_max_median": 0.005448830779641867,
+      "span": 6.4473466873168945
+    },
+    "random_def": {
+      "scheme": "random_def",
+      "threshold": 0.12,
+      "raw_quantile": 0.11805479228496552,
+      "quantile": 0.99,
+      "null_seed": 20260815,
+      "n_cells": 224,
+      "null_median": 0.0016319075366482139,
+      "null_mean": 0.010004950687289238,
+      "null_max": 0.23548732697963715,
+      "null_per_head_max_median": 0.01690497249364853,
+      "span": 2.579727053642273
+    },
+    "random_answer": {
+      "scheme": "random_answer",
+      "threshold": 0.08,
+      "raw_quantile": 0.07974488288164139,
+      "quantile": 0.99,
+      "null_seed": 20260815,
+      "n_cells": 224,
+      "null_median": 0.0004961845697835088,
+      "null_mean": 0.006937463767826557,
+      "null_max": 0.2948388159275055,
+      "null_per_head_max_median": 0.00942546408623457,
+      "span": 7.469912528991699
+    },
+    "random_vocab_cdef": {
+      "scheme": "random_vocab_cdef",
+      "threshold": 0.091,
+      "raw_quantile": 0.09090472757816315,
+      "quantile": 0.99,
+      "null_seed": 20260815,
+      "n_cells": 224,
+      "null_median": 0.0006781882839277387,
+      "null_mean": 0.00626412546262145,
+      "null_max": 0.22740991413593292,
+      "null_per_head_max_median": 0.009929666295647621,
+      "span": 6.359579086303711
+    },
+    "random_vocab_any": {
+      "scheme": "random_vocab_any",
+      "threshold": 3.3000000000000003,
+      "raw_quantile": 3.2019002437591553,
+      "quantile": 0.99,
+      "null_seed": 20260815,
+      "n_cells": 224,
+      "null_median": 0.02094276249408722,
+      "null_mean": 0.20800459384918213,
+      "null_max": 6.410217761993408,
+      "null_per_head_max_median": 0.23424158990383148,
+      "span": 0.366007924079895
+    }
+  },
+  "before": {
+    "channel": "activation patching / logit_diff / shared 0.02",
+    "threshold": {
+      "random_random": 0.02,
+      "random_def": 0.02,
+      "random_answer": 0.02,
+      "random_vocab_cdef": 0.02,
+      "random_vocab_any": 0.02
+    },
+    "primary": "random_random",
+    "schemes": [
+      "random_random",
+      "random_def",
+      "random_answer",
+      "random_vocab_cdef",
+      "random_vocab_any"
+    ],
+    "flag": true,
+    "flag_text": "COUNTERFACTUAL-SCHEME-DEPENDENT: 17 head(s) [0.2, 0.4, 0.6, 1.0, 1.1, 1.2, 1.4, 1.5, 1.7, 2.0, 2.1, 2.4, 2.5, 2.6, 2.7, 3.2, 3.4] are found under another counterfactual and missed under the primary one (random_random). The head list under the primary counterfactual is not the circuit; it is what this counterfactual can see.",
+    "union": [
+      "0.0",
+      "0.1",
+      "0.2",
+      "0.4",
+      "0.5",
+      "0.6",
+      "1.0",
+      "1.1",
+      "1.2",
+      "1.4",
+      "1.5",
+      "1.7",
+      "2.0",
+      "2.1",
+      "2.2",
+      "2.3",
+      "2.4",
+      "2.5",
+      "2.6",
+      "2.7",
+      "3.0",
+      "3.2",
+      "3.3",
+      "3.4",
+      "3.5",
+      "3.6"
+    ],
+    "intersection": [
+      "0.1",
+      "0.5",
+      "2.2",
+      "2.3",
+      "3.0",
+      "3.6"
+    ],
+    "scheme_dependent": [
+      "0.0",
+      "0.2",
+      "0.4",
+      "0.6",
+      "1.0",
+      "1.1",
+      "1.2",
+      "1.4",
+      "1.5",
+      "1.7",
+      "2.0",
+      "2.1",
+      "2.4",
+      "2.5",
+      "2.6",
+      "2.7",
+      "3.2",
+      "3.3",
+      "3.4",
+      "3.5"
+    ],
+    "per_scheme": {
+      "random_random": [
+        "0.0",
+        "0.1",
+        "0.5",
+        "2.2",
+        "2.3",
+        "3.0",
+        "3.3",
+        "3.5",
+        "3.6"
+      ],
+      "random_def": [
+        "0.1",
+        "0.2",
+        "0.5",
+        "1.0",
+        "1.1",
+        "1.4",
+        "2.0",
+        "2.1",
+        "2.2",
+        "2.3",
+        "2.5",
+        "2.6",
+        "3.0",
+        "3.3",
+        "3.4",
+        "3.5",
+        "3.6"
+      ],
+      "random_answer": [
+        "0.0",
+        "0.1",
+        "0.5",
+        "1.0",
+        "2.2",
+        "2.3",
+        "2.5",
+        "3.0",
+        "3.3",
+        "3.5",
+        "3.6"
+      ],
+      "random_vocab_cdef": [
+        "0.0",
+        "0.1",
+        "0.5",
+        "1.2",
+        "2.2",
+        "2.3",
+        "2.5",
+        "3.0",
+        "3.5",
+        "3.6"
+      ],
+      "random_vocab_any": [
+        "0.0",
+        "0.1",
+        "0.2",
+        "0.4",
+        "0.5",
+        "0.6",
+        "1.0",
+        "1.1",
+        "1.2",
+        "1.4",
+        "1.5",
+        "1.7",
+        "2.0",
+        "2.1",
+        "2.2",
+        "2.3",
+        "2.4",
+        "2.5",
+        "2.6",
+        "2.7",
+        "3.0",
+        "3.2",
+        "3.3",
+        "3.4",
+        "3.6"
+      ]
+    },
+    "blind_spots": {
+      "random_random": [
+        "0.2",
+        "0.4",
+        "0.6",
+        "1.0",
+        "1.1",
+        "1.2",
+        "1.4",
+        "1.5",
+        "1.7",
+        "2.0",
+        "2.1",
+        "2.4",
+        "2.5",
+        "2.6",
+        "2.7",
+        "3.2",
+        "3.4"
+      ],
+      "random_def": [
+        "0.0",
+        "0.4",
+        "0.6",
+        "1.2",
+        "1.5",
+        "1.7",
+        "2.4",
+        "2.7",
+        "3.2"
+      ],
+      "random_answer": [
+        "0.2",
+        "0.4",
+        "0.6",
+        "1.1",
+        "1.2",
+        "1.4",
+        "1.5",
+        "1.7",
+        "2.0",
+        "2.1",
+        "2.4",
+        "2.6",
+        "2.7",
+        "3.2",
+        "3.4"
+      ],
+      "random_vocab_cdef": [
+        "0.2",
+        "0.4",
+        "0.6",
+        "1.0",
+        "1.1",
+        "1.4",
+        "1.5",
+        "1.7",
+        "2.0",
+        "2.1",
+        "2.4",
+        "2.6",
+        "2.7",
+        "3.2",
+        "3.3",
+        "3.4"
+      ],
+      "random_vocab_any": [
+        "3.5"
+      ]
+    },
+    "only_in": {
+      "random_random": [],
+      "random_def": [],
+      "random_answer": [],
+      "random_vocab_cdef": [],
+      "random_vocab_any": [
+        "0.4",
+        "0.6",
+        "1.5",
+        "1.7",
+        "2.4",
+        "2.7",
+        "3.2"
+      ]
+    },
+    "power": {
+      "random_random": {
+        "scheme": "random_random",
+        "span": 6.4473466873168945,
+        "power": 1.0,
+        "low_power": false
+      },
+      "random_def": {
+        "scheme": "random_def",
+        "span": 2.579727053642273,
+        "power": 0.4001222795599104,
+        "low_power": false
+      },
+      "random_answer": {
+        "scheme": "random_answer",
+        "span": 7.469912528991699,
+        "power": 1.1586025835536933,
+        "low_power": false
+      },
+      "random_vocab_cdef": {
+        "scheme": "random_vocab_cdef",
+        "span": 6.359579086303711,
+        "power": 0.9863870200766715,
+        "low_power": false
+      },
+      "random_vocab_any": {
+        "scheme": "random_vocab_any",
+        "span": 0.366007924079895,
+        "power": 0.056768767344231585,
+        "low_power": true
+      }
+    },
+    "verdicts": [
+      {
+        "head": "0.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_def"
+        ],
+        "effects": {
+          "random_random": 0.047643136233091354,
+          "random_def": 0.008290265686810017,
+          "random_answer": 0.09100323170423508,
+          "random_vocab_cdef": 0.08716845512390137,
+          "random_vocab_any": 0.03147000074386597
+        }
+      },
+      {
+        "head": "0.1",
+        "status": "robust",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "missing_in": [],
+        "effects": {
+          "random_random": 0.028230836614966393,
+          "random_def": 0.040373433381319046,
+          "random_answer": 0.0645994246006012,
+          "random_vocab_cdef": 0.029371138662099838,
+          "random_vocab_any": 0.031001480296254158
+        }
+      },
+      {
+        "head": "0.2",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.0030291250441223383,
+          "random_def": 0.023089030757546425,
+          "random_answer": 0.0058681657537817955,
+          "random_vocab_cdef": 0.006234608590602875,
+          "random_vocab_any": -0.09483687579631805
+        }
+      },
+      {
+        "head": "0.4",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.001054872409440577,
+          "random_def": -0.0137800183147192,
+          "random_answer": 0.0016808228101581335,
+          "random_vocab_cdef": 0.0018425427842885256,
+          "random_vocab_any": 0.0694558247923851
+        }
+      },
+      {
+        "head": "0.5",
+        "status": "robust",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "missing_in": [],
+        "effects": {
+          "random_random": 0.08884617686271667,
+          "random_def": 0.17517057061195374,
+          "random_answer": 0.18513543903827667,
+          "random_vocab_cdef": 0.11950982362031937,
+          "random_vocab_any": 0.08871030807495117
+        }
+      },
+      {
+        "head": "0.6",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.0022646882571280003,
+          "random_def": -0.017978200688958168,
+          "random_answer": 0.008093560114502907,
+          "random_vocab_cdef": 0.00887193251401186,
+          "random_vocab_any": 0.05140512436628342
+        }
+      },
+      {
+        "head": "1.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def",
+          "random_answer",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.009206152521073818,
+          "random_def": 0.22936376929283142,
+          "random_answer": 0.02945183776319027,
+          "random_vocab_cdef": 0.015564365312457085,
+          "random_vocab_any": -0.12001778930425644
+        }
+      },
+      {
+        "head": "1.1",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.003609922481700778,
+          "random_def": 0.033650703728199005,
+          "random_answer": 0.00257795094512403,
+          "random_vocab_cdef": 0.005246980581432581,
+          "random_vocab_any": 0.10458841919898987
+        }
+      },
+      {
+        "head": "1.2",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_def",
+          "random_answer"
+        ],
+        "effects": {
+          "random_random": -0.01597292721271515,
+          "random_def": 0.0070479088462889194,
+          "random_answer": -0.005626488942652941,
+          "random_vocab_cdef": -0.025183992460370064,
+          "random_vocab_any": 0.1591702699661255
+        }
+      },
+      {
+        "head": "1.4",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": -0.01560897659510374,
+          "random_def": 0.6022944450378418,
+          "random_answer": 0.0001320733135798946,
+          "random_vocab_cdef": 0.0012625023955479264,
+          "random_vocab_any": 0.2733408212661743
+        }
+      },
+      {
+        "head": "1.5",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.006714485585689545,
+          "random_def": 0.007700579706579447,
+          "random_answer": 0.004528984893113375,
+          "random_vocab_cdef": -0.0012087422655895352,
+          "random_vocab_any": 0.02142610214650631
+        }
+      },
+      {
+        "head": "1.7",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.0028488878160715103,
+          "random_def": 0.012430038303136826,
+          "random_answer": -0.0008891489123925567,
+          "random_vocab_cdef": 0.004729173146188259,
+          "random_vocab_any": -0.05998833477497101
+        }
+      },
+      {
+        "head": "2.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.005695778876543045,
+          "random_def": 1.0906190872192383,
+          "random_answer": 0.004105763044208288,
+          "random_vocab_cdef": 0.004051809664815664,
+          "random_vocab_any": 0.3463853895664215
+        }
+      },
+      {
+        "head": "2.1",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.0030451002530753613,
+          "random_def": 0.062238406389951706,
+          "random_answer": 0.003729076124727726,
+          "random_vocab_cdef": -0.0020925989374518394,
+          "random_vocab_any": 0.04306073486804962
+        }
+      },
+      {
+        "head": "2.2",
+        "status": "robust",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "missing_in": [],
+        "effects": {
+          "random_random": 0.043587613850831985,
+          "random_def": 0.0812261626124382,
+          "random_answer": 0.02533005177974701,
+          "random_vocab_cdef": -0.06270868331193924,
+          "random_vocab_any": -0.2094852775335312
+        }
+      },
+      {
+        "head": "2.3",
+        "status": "robust",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "missing_in": [],
+        "effects": {
+          "random_random": 0.11425704509019852,
+          "random_def": 0.14631789922714233,
+          "random_answer": 0.086579829454422,
+          "random_vocab_cdef": 0.07242458313703537,
+          "random_vocab_any": -0.05049324035644531
+        }
+      },
+      {
+        "head": "2.4",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": -0.007968676276504993,
+          "random_def": -0.01169590000063181,
+          "random_answer": 0.0003745162393897772,
+          "random_vocab_cdef": 0.0007593159680254757,
+          "random_vocab_any": 0.089244544506073
+        }
+      },
+      {
+        "head": "2.5",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random"
+        ],
+        "effects": {
+          "random_random": 0.015509428456425667,
+          "random_def": 0.04918906092643738,
+          "random_answer": 0.026335379108786583,
+          "random_vocab_cdef": 0.027907392010092735,
+          "random_vocab_any": -0.026235247030854225
+        }
+      },
+      {
+        "head": "2.6",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": -0.004249738994985819,
+          "random_def": 0.04464809596538544,
+          "random_answer": 0.002701151417568326,
+          "random_vocab_cdef": 0.00040338895632885396,
+          "random_vocab_any": 0.08264167606830597
+        }
+      },
+      {
+        "head": "2.7",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": -0.003287832485511899,
+          "random_def": 0.011105936020612717,
+          "random_answer": -0.0016249038744717836,
+          "random_vocab_cdef": 0.0007123788818717003,
+          "random_vocab_any": 0.051334772258996964
+        }
+      },
+      {
+        "head": "3.0",
+        "status": "robust",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "missing_in": [],
+        "effects": {
+          "random_random": 0.5884243249893188,
+          "random_def": 0.8789399862289429,
+          "random_answer": 0.5246409177780151,
+          "random_vocab_cdef": 0.4542692303657532,
+          "random_vocab_any": 0.7805854082107544
+        }
+      },
+      {
+        "head": "3.2",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.008120661601424217,
+          "random_def": 0.0022343939635902643,
+          "random_answer": 0.004142914433032274,
+          "random_vocab_cdef": 0.003120940877124667,
+          "random_vocab_any": -0.02937476336956024
+        }
+      },
+      {
+        "head": "3.3",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.02384323813021183,
+          "random_def": 0.03240973502397537,
+          "random_answer": 0.02519306354224682,
+          "random_vocab_cdef": 0.016574261710047722,
+          "random_vocab_any": -0.03982562571763992
+        }
+      },
+      {
+        "head": "3.4",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "effects": {
+          "random_random": 0.009405693039298058,
+          "random_def": 0.024433327838778496,
+          "random_answer": 0.010995789431035519,
+          "random_vocab_cdef": 0.006940164603292942,
+          "random_vocab_any": 0.07344485074281693
+        }
+      },
+      {
+        "head": "3.5",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "missing_in": [
+          "random_vocab_any"
+        ],
+        "effects": {
+          "random_random": 0.032418377697467804,
+          "random_def": 0.039039675146341324,
+          "random_answer": 0.036880433559417725,
+          "random_vocab_cdef": 0.029856329783797264,
+          "random_vocab_any": -0.004099114798009396
+        }
+      },
+      {
+        "head": "3.6",
+        "status": "robust",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "missing_in": [],
+        "effects": {
+          "random_random": 0.5507980585098267,
+          "random_def": 0.6045638918876648,
+          "random_answer": 0.49867528676986694,
+          "random_vocab_cdef": 0.4209897518157959,
+          "random_vocab_any": 0.34956562519073486
+        }
+      }
+    ]
+  },
+  "after": {
+    "channel": "activation patching / logit_diff / per-scheme null floor",
+    "threshold": {
+      "random_random": 0.07,
+      "random_def": 0.12,
+      "random_answer": 0.08,
+      "random_vocab_cdef": 0.091,
+      "random_vocab_any": 3.3000000000000003
+    },
+    "primary": "random_random",
+    "schemes": [
+      "random_random",
+      "random_def",
+      "random_answer",
+      "random_vocab_cdef",
+      "random_vocab_any"
+    ],
+    "flag": true,
+    "flag_text": "COUNTERFACTUAL-SCHEME-DEPENDENT: 4 head(s) [0.0, 1.0, 1.4, 2.0] are found under another counterfactual and missed under the primary one (random_random). The head list under the primary counterfactual is not the circuit; it is what this counterfactual can see.",
+    "union": [
+      "0.0",
+      "0.5",
+      "1.0",
+      "1.4",
+      "2.0",
+      "2.3",
+      "3.0",
+      "3.6"
+    ],
+    "intersection": [],
+    "scheme_dependent": [
+      "0.0",
+      "0.5",
+      "1.0",
+      "1.4",
+      "2.0",
+      "2.3",
+      "3.0",
+      "3.6"
+    ],
+    "per_scheme": {
+      "random_random": [
+        "0.5",
+        "2.3",
+        "3.0",
+        "3.6"
+      ],
+      "random_def": [
+        "0.5",
+        "1.0",
+        "1.4",
+        "2.0",
+        "2.3",
+        "3.0",
+        "3.6"
+      ],
+      "random_answer": [
+        "0.0",
+        "0.5",
+        "2.3",
+        "3.0",
+        "3.6"
+      ],
+      "random_vocab_cdef": [
+        "0.5",
+        "3.0",
+        "3.6"
+      ],
+      "random_vocab_any": []
+    },
+    "blind_spots": {
+      "random_random": [
+        "0.0",
+        "1.0",
+        "1.4",
+        "2.0"
+      ],
+      "random_def": [
+        "0.0"
+      ],
+      "random_answer": [
+        "1.0",
+        "1.4",
+        "2.0"
+      ],
+      "random_vocab_cdef": [
+        "0.0",
+        "1.0",
+        "1.4",
+        "2.0",
+        "2.3"
+      ],
+      "random_vocab_any": [
+        "0.0",
+        "0.5",
+        "1.0",
+        "1.4",
+        "2.0",
+        "2.3",
+        "3.0",
+        "3.6"
+      ]
+    },
+    "only_in": {
+      "random_random": [],
+      "random_def": [
+        "1.0",
+        "1.4",
+        "2.0"
+      ],
+      "random_answer": [
+        "0.0"
+      ],
+      "random_vocab_cdef": [],
+      "random_vocab_any": []
+    },
+    "power": {
+      "random_random": {
+        "scheme": "random_random",
+        "span": 6.4473466873168945,
+        "power": 1.0,
+        "low_power": false
+      },
+      "random_def": {
+        "scheme": "random_def",
+        "span": 2.579727053642273,
+        "power": 0.4001222795599104,
+        "low_power": false
+      },
+      "random_answer": {
+        "scheme": "random_answer",
+        "span": 7.469912528991699,
+        "power": 1.1586025835536933,
+        "low_power": false
+      },
+      "random_vocab_cdef": {
+        "scheme": "random_vocab_cdef",
+        "span": 6.359579086303711,
+        "power": 0.9863870200766715,
+        "low_power": false
+      },
+      "random_vocab_any": {
+        "scheme": "random_vocab_any",
+        "span": 0.366007924079895,
+        "power": 0.056768767344231585,
+        "low_power": true
+      }
+    },
+    "verdicts": [
+      {
+        "head": "0.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_answer"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_def",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "random_random": 0.047643136233091354,
+          "random_def": 0.008290265686810017,
+          "random_answer": 0.09100323170423508,
+          "random_vocab_cdef": 0.08716845512390137,
+          "random_vocab_any": 0.03147000074386597
+        }
+      },
+      {
+        "head": "0.5",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "missing_in": [
+          "random_vocab_any"
+        ],
+        "effects": {
+          "random_random": 0.08884617686271667,
+          "random_def": 0.17517057061195374,
+          "random_answer": 0.18513543903827667,
+          "random_vocab_cdef": 0.11950982362031937,
+          "random_vocab_any": 0.08871030807495117
+        }
+      },
+      {
+        "head": "1.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "random_random": 0.009206152521073818,
+          "random_def": 0.22936376929283142,
+          "random_answer": 0.02945183776319027,
+          "random_vocab_cdef": 0.015564365312457085,
+          "random_vocab_any": -0.12001778930425644
+        }
+      },
+      {
+        "head": "1.4",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "random_random": -0.01560897659510374,
+          "random_def": 0.6022944450378418,
+          "random_answer": 0.0001320733135798946,
+          "random_vocab_cdef": 0.0012625023955479264,
+          "random_vocab_any": 0.2733408212661743
+        }
+      },
+      {
+        "head": "2.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_def"
+        ],
+        "missing_in": [
+          "random_random",
+          "random_answer",
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "random_random": 0.005695778876543045,
+          "random_def": 1.0906190872192383,
+          "random_answer": 0.004105763044208288,
+          "random_vocab_cdef": 0.004051809664815664,
+          "random_vocab_any": 0.3463853895664215
+        }
+      },
+      {
+        "head": "2.3",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer"
+        ],
+        "missing_in": [
+          "random_vocab_cdef",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "random_random": 0.11425704509019852,
+          "random_def": 0.14631789922714233,
+          "random_answer": 0.086579829454422,
+          "random_vocab_cdef": 0.07242458313703537,
+          "random_vocab_any": -0.05049324035644531
+        }
+      },
+      {
+        "head": "3.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "missing_in": [
+          "random_vocab_any"
+        ],
+        "effects": {
+          "random_random": 0.5884243249893188,
+          "random_def": 0.8789399862289429,
+          "random_answer": 0.5246409177780151,
+          "random_vocab_cdef": 0.4542692303657532,
+          "random_vocab_any": 0.7805854082107544
+        }
+      },
+      {
+        "head": "3.6",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_random",
+          "random_def",
+          "random_answer",
+          "random_vocab_cdef"
+        ],
+        "missing_in": [
+          "random_vocab_any"
+        ],
+        "effects": {
+          "random_random": 0.5507980585098267,
+          "random_def": 0.6045638918876648,
+          "random_answer": 0.49867528676986694,
+          "random_vocab_cdef": 0.4209897518157959,
+          "random_vocab_any": 0.34956562519073486
+        }
+      }
+    ]
+  },
+  "scored_before": {
+    "flag": true,
+    "n_flagged": 17,
+    "flagged": [
+      "0.2",
+      "0.4",
+      "0.6",
+      "1.0",
+      "1.1",
+      "1.2",
+      "1.4",
+      "1.5",
+      "1.7",
+      "2.0",
+      "2.1",
+      "2.4",
+      "2.5",
+      "2.6",
+      "2.7",
+      "3.2",
+      "3.4"
+    ],
+    "published_in_blind_spot": [
+      "1.2",
+      "1.4",
+      "2.0"
+    ],
+    "unpublished_in_blind_spot": [
+      "0.2",
+      "0.4",
+      "0.6",
+      "1.0",
+      "1.1",
+      "1.5",
+      "1.7",
+      "2.1",
+      "2.4",
+      "2.5",
+      "2.6",
+      "2.7",
+      "3.2",
+      "3.4"
+    ],
+    "per_scheme": {
+      "random_random": {
+        "label": "random_random",
+        "n_discovered": 9,
+        "matches": [
+          "0.5",
+          "3.0",
+          "3.6"
+        ],
+        "misses": [
+          "1.2",
+          "1.4",
+          "2.0"
+        ],
+        "precision": 0.3333333333333333,
+        "recall": 0.5
+      },
+      "random_def": {
+        "label": "random_def",
+        "n_discovered": 17,
+        "matches": [
+          "0.5",
+          "1.4",
+          "2.0",
+          "3.0",
+          "3.6"
+        ],
+        "misses": [
+          "1.2"
+        ],
+        "precision": 0.29411764705882354,
+        "recall": 0.8333333333333334
+      },
+      "random_answer": {
+        "label": "random_answer",
+        "n_discovered": 11,
+        "matches": [
+          "0.5",
+          "3.0",
+          "3.6"
+        ],
+        "misses": [
+          "1.2",
+          "1.4",
+          "2.0"
+        ],
+        "precision": 0.2727272727272727,
+        "recall": 0.5
+      },
+      "random_vocab_cdef": {
+        "label": "random_vocab_cdef",
+        "n_discovered": 10,
+        "matches": [
+          "0.5",
+          "1.2",
+          "3.0",
+          "3.6"
+        ],
+        "misses": [
+          "1.4",
+          "2.0"
+        ],
+        "precision": 0.4,
+        "recall": 0.6666666666666666
+      },
+      "random_vocab_any": {
+        "label": "random_vocab_any",
+        "n_discovered": 25,
+        "matches": [
+          "0.5",
+          "1.2",
+          "1.4",
+          "2.0",
+          "3.0",
+          "3.6"
+        ],
+        "misses": [],
+        "precision": 0.24,
+        "recall": 1.0
+      }
+    },
+    "primary": {
+      "label": "primary",
+      "n_discovered": 9,
+      "matches": [
+        "0.5",
+        "3.0",
+        "3.6"
+      ],
+      "misses": [
+        "1.2",
+        "1.4",
+        "2.0"
+      ],
+      "precision": 0.3333333333333333,
+      "recall": 0.5
+    },
+    "union": {
+      "label": "union",
+      "n_discovered": 26,
+      "matches": [
+        "0.5",
+        "1.2",
+        "1.4",
+        "2.0",
+        "3.0",
+        "3.6"
+      ],
+      "misses": [],
+      "precision": 0.23076923076923078,
+      "recall": 1.0
+    },
+    "blind_spot_contributions": {
+      "random_def": [
+        "0.2",
+        "1.0",
+        "1.1",
+        "1.4",
+        "2.0",
+        "2.1",
+        "2.5",
+        "2.6",
+        "3.4"
+      ],
+      "random_answer": [
+        "1.0",
+        "2.5"
+      ],
+      "random_vocab_cdef": [
+        "1.2",
+        "2.5"
+      ],
+      "random_vocab_any": [
+        "0.2",
+        "0.4",
+        "0.6",
+        "1.0",
+        "1.1",
+        "1.2",
+        "1.4",
+        "1.5",
+        "1.7",
+        "2.0",
+        "2.1",
+        "2.4",
+        "2.5",
+        "2.6",
+        "2.7",
+        "3.2",
+        "3.4"
+      ]
+    }
+  },
+  "scored_after": {
+    "flag": true,
+    "n_flagged": 4,
+    "flagged": [
+      "0.0",
+      "1.0",
+      "1.4",
+      "2.0"
+    ],
+    "published_in_blind_spot": [
+      "1.4",
+      "2.0"
+    ],
+    "unpublished_in_blind_spot": [
+      "0.0",
+      "1.0"
+    ],
+    "per_scheme": {
+      "random_random": {
+        "label": "random_random",
+        "n_discovered": 4,
+        "matches": [
+          "0.5",
+          "3.0",
+          "3.6"
+        ],
+        "misses": [
+          "1.2",
+          "1.4",
+          "2.0"
+        ],
+        "precision": 0.75,
+        "recall": 0.5
+      },
+      "random_def": {
+        "label": "random_def",
+        "n_discovered": 7,
+        "matches": [
+          "0.5",
+          "1.4",
+          "2.0",
+          "3.0",
+          "3.6"
+        ],
+        "misses": [
+          "1.2"
+        ],
+        "precision": 0.7142857142857143,
+        "recall": 0.8333333333333334
+      },
+      "random_answer": {
+        "label": "random_answer",
+        "n_discovered": 5,
+        "matches": [
+          "0.5",
+          "3.0",
+          "3.6"
+        ],
+        "misses": [
+          "1.2",
+          "1.4",
+          "2.0"
+        ],
+        "precision": 0.6,
+        "recall": 0.5
+      },
+      "random_vocab_cdef": {
+        "label": "random_vocab_cdef",
+        "n_discovered": 3,
+        "matches": [
+          "0.5",
+          "3.0",
+          "3.6"
+        ],
+        "misses": [
+          "1.2",
+          "1.4",
+          "2.0"
+        ],
+        "precision": 1.0,
+        "recall": 0.5
+      },
+      "random_vocab_any": {
+        "label": "random_vocab_any",
+        "n_discovered": 0,
+        "matches": [],
+        "misses": [
+          "0.5",
+          "1.2",
+          "1.4",
+          "2.0",
+          "3.0",
+          "3.6"
+        ],
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    },
+    "primary": {
+      "label": "primary",
+      "n_discovered": 4,
+      "matches": [
+        "0.5",
+        "3.0",
+        "3.6"
+      ],
+      "misses": [
+        "1.2",
+        "1.4",
+        "2.0"
+      ],
+      "precision": 0.75,
+      "recall": 0.5
+    },
+    "union": {
+      "label": "union",
+      "n_discovered": 8,
+      "matches": [
+        "0.5",
+        "1.4",
+        "2.0",
+        "3.0",
+        "3.6"
+      ],
+      "misses": [
+        "1.2"
+      ],
+      "precision": 0.625,
+      "recall": 0.8333333333333334
+    },
+    "blind_spot_contributions": {
+      "random_def": [
+        "1.0",
+        "1.4",
+        "2.0"
+      ],
+      "random_answer": [
+        "0.0"
+      ],
+      "random_vocab_cdef": [],
+      "random_vocab_any": []
+    }
+  },
+  "effects": {
+    "random_random": {
+      "0.0": 0.047643136233091354,
+      "0.1": 0.028230836614966393,
+      "0.2": 0.0030291250441223383,
+      "0.3": 0.001804961240850389,
+      "0.4": 0.001054872409440577,
+      "0.5": 0.08884617686271667,
+      "0.6": 0.0022646882571280003,
+      "0.7": 0.004526492208242416,
+      "1.0": 0.009206152521073818,
+      "1.1": 0.003609922481700778,
+      "1.2": -0.01597292721271515,
+      "1.3": 0.0047028097324073315,
+      "1.4": -0.01560897659510374,
+      "1.5": 0.006714485585689545,
+      "1.6": -0.0009483719477429986,
+      "1.7": 0.0028488878160715103,
+      "2.0": 0.005695778876543045,
+      "2.1": 0.0030451002530753613,
+      "2.2": 0.043587613850831985,
+      "2.3": 0.11425704509019852,
+      "2.4": -0.007968676276504993,
+      "2.5": 0.015509428456425667,
+      "2.6": -0.004249738994985819,
+      "2.7": -0.003287832485511899,
+      "3.0": 0.5884243249893188,
+      "3.1": -0.001278079696930945,
+      "3.2": 0.008120661601424217,
+      "3.3": 0.02384323813021183,
+      "3.4": 0.009405693039298058,
+      "3.5": 0.032418377697467804,
+      "3.6": 0.5507980585098267,
+      "3.7": 0.0028248513117432594
+    },
+    "random_def": {
+      "0.0": 0.008290265686810017,
+      "0.1": 0.040373433381319046,
+      "0.2": 0.023089030757546425,
+      "0.3": -0.0012692511081695557,
+      "0.4": -0.0137800183147192,
+      "0.5": 0.17517057061195374,
+      "0.6": -0.017978200688958168,
+      "0.7": -0.012185540981590748,
+      "1.0": 0.22936376929283142,
+      "1.1": 0.033650703728199005,
+      "1.2": 0.0070479088462889194,
+      "1.3": 0.009960157796740532,
+      "1.4": 0.6022944450378418,
+      "1.5": 0.007700579706579447,
+      "1.6": -0.004345592111349106,
+      "1.7": 0.012430038303136826,
+      "2.0": 1.0906190872192383,
+      "2.1": 0.062238406389951706,
+      "2.2": 0.0812261626124382,
+      "2.3": 0.14631789922714233,
+      "2.4": -0.01169590000063181,
+      "2.5": 0.04918906092643738,
+      "2.6": 0.04464809596538544,
+      "2.7": 0.011105936020612717,
+      "3.0": 0.8789399862289429,
+      "3.1": -0.00018142061890102923,
+      "3.2": 0.0022343939635902643,
+      "3.3": 0.03240973502397537,
+      "3.4": 0.024433327838778496,
+      "3.5": 0.039039675146341324,
+      "3.6": 0.6045638918876648,
+      "3.7": 0.006071583367884159
+    },
+    "random_answer": {
+      "0.0": 0.09100323170423508,
+      "0.1": 0.0645994246006012,
+      "0.2": 0.0058681657537817955,
+      "0.3": 0.001110781915485859,
+      "0.4": 0.0016808228101581335,
+      "0.5": 0.18513543903827667,
+      "0.6": 0.008093560114502907,
+      "0.7": 0.001694228034466505,
+      "1.0": 0.02945183776319027,
+      "1.1": 0.00257795094512403,
+      "1.2": -0.005626488942652941,
+      "1.3": 0.008240762166678905,
+      "1.4": 0.0001320733135798946,
+      "1.5": 0.004528984893113375,
+      "1.6": 0.004140743985772133,
+      "1.7": -0.0008891489123925567,
+      "2.0": 0.004105763044208288,
+      "2.1": 0.003729076124727726,
+      "2.2": 0.02533005177974701,
+      "2.3": 0.086579829454422,
+      "2.4": 0.0003745162393897772,
+      "2.5": 0.026335379108786583,
+      "2.6": 0.002701151417568326,
+      "2.7": -0.0016249038744717836,
+      "3.0": 0.5246409177780151,
+      "3.1": 0.0010663531720638275,
+      "3.2": 0.004142914433032274,
+      "3.3": 0.02519306354224682,
+      "3.4": 0.010995789431035519,
+      "3.5": 0.036880433559417725,
+      "3.6": 0.49867528676986694,
+      "3.7": 0.0006918368744663894
+    },
+    "random_vocab_cdef": {
+      "0.0": 0.08716845512390137,
+      "0.1": 0.029371138662099838,
+      "0.2": 0.006234608590602875,
+      "0.3": 0.010590159334242344,
+      "0.4": 0.0018425427842885256,
+      "0.5": 0.11950982362031937,
+      "0.6": 0.00887193251401186,
+      "0.7": 0.010198917239904404,
+      "1.0": 0.015564365312457085,
+      "1.1": 0.005246980581432581,
+      "1.2": -0.025183992460370064,
+      "1.3": 0.014603804796934128,
+      "1.4": 0.0012625023955479264,
+      "1.5": -0.0012087422655895352,
+      "1.6": 0.007995649240911007,
+      "1.7": 0.004729173146188259,
+      "2.0": 0.004051809664815664,
+      "2.1": -0.0020925989374518394,
+      "2.2": -0.06270868331193924,
+      "2.3": 0.07242458313703537,
+      "2.4": 0.0007593159680254757,
+      "2.5": 0.027907392010092735,
+      "2.6": 0.00040338895632885396,
+      "2.7": 0.0007123788818717003,
+      "3.0": 0.4542692303657532,
+      "3.1": 0.001737496699206531,
+      "3.2": 0.003120940877124667,
+      "3.3": 0.016574261710047722,
+      "3.4": 0.006940164603292942,
+      "3.5": 0.029856329783797264,
+      "3.6": 0.4209897518157959,
+      "3.7": 0.003077677683904767
+    },
+    "random_vocab_any": {
+      "0.0": 0.03147000074386597,
+      "0.1": 0.031001480296254158,
+      "0.2": -0.09483687579631805,
+      "0.3": -0.015064259059727192,
+      "0.4": 0.0694558247923851,
+      "0.5": 0.08871030807495117,
+      "0.6": 0.05140512436628342,
+      "0.7": 0.01772369258105755,
+      "1.0": -0.12001778930425644,
+      "1.1": 0.10458841919898987,
+      "1.2": 0.1591702699661255,
+      "1.3": -0.015104401856660843,
+      "1.4": 0.2733408212661743,
+      "1.5": 0.02142610214650631,
+      "1.6": -0.008733682334423065,
+      "1.7": -0.05998833477497101,
+      "2.0": 0.3463853895664215,
+      "2.1": 0.04306073486804962,
+      "2.2": -0.2094852775335312,
+      "2.3": -0.05049324035644531,
+      "2.4": 0.089244544506073,
+      "2.5": -0.026235247030854225,
+      "2.6": 0.08264167606830597,
+      "2.7": 0.051334772258996964,
+      "3.0": 0.7805854082107544,
+      "3.1": 0.005396709311753511,
+      "3.2": -0.02937476336956024,
+      "3.3": -0.03982562571763992,
+      "3.4": 0.07344485074281693,
+      "3.5": -0.004099114798009396,
+      "3.6": 0.34956562519073486,
+      "3.7": 0.009116382338106632
+    }
+  }
+}

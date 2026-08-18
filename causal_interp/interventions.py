@@ -210,6 +210,75 @@ def sweep_heads(
     return out
 
 
+def _make_null_hook(
+    spec: Patch, ds: IOIDataset, cache: ActivationCache, permutation: Tensor
+) -> Callable:
+    """Like `_make_hook`, but the clean value comes from a *different* prompt.
+
+    The source is read at the source prompt's own semantic position, not at this
+    prompt's — `path_signal`'s shuffled-source null does the same, and for tasks whose
+    templates differ in length the two are not the same index.
+    """
+    rows = torch.arange(len(ds), device=ds.clean_tokens.device)
+    src_rows = permutation.to(rows.device)
+    pos = ds.positions[spec.position]
+    src_pos = pos[src_rows]
+
+    def hook(activation: Tensor, hook) -> Tensor:  # noqa: ANN001 - TL's hook signature
+        clean = cache[hook.name]
+        activation[rows, pos, spec.head] = clean[src_rows, src_pos, spec.head]
+        return activation
+
+    return hook
+
+
+def sweep_heads_null(
+    model: HookedTransformer,
+    ds: IOIDataset,
+    cache: ActivationCache,
+    baseline: Baseline,
+    positions: Sequence[str],
+    permutation: Tensor,
+    progress: Callable[[int, int], None] | None = None,
+) -> Tensor:
+    """`sweep_heads` with the spliced clean activation drawn from a deranged prompt order.
+
+    The activation-patching counterpart of the shuffled-source null Phase 3 built for
+    `path_signal`, and it answers the same question one channel down: how much apparent
+    recovery does this procedure manufacture when the value it splices in is a real
+    activation whose prompt-correspondence has been destroyed?
+
+    That quantity is what makes two schemes comparable. Normalized recovery divides by
+    each scheme's own clean-vs-corrupted span, so a fixed cutoff means different things
+    under different counterfactuals; a cutoff calibrated against this null is in the
+    scheme's own units.
+
+    Returns a (n_layers, n_heads, n_positions) tensor, the same shape `sweep_heads`
+    returns, so the two are directly comparable cell by cell. With the identity
+    permutation it reproduces `sweep_heads` exactly — `scripts/check_schemes.py` checks
+    that rather than assuming it.
+    """
+    n_layers, n_heads = model.cfg.n_layers, model.cfg.n_heads
+    out = torch.zeros(n_layers, n_heads, len(positions))
+    total = n_layers * n_heads * len(positions)
+    done = 0
+
+    for layer in range(n_layers):
+        for head in range(n_heads):
+            for p, position in enumerate(positions):
+                spec = Patch(layer=layer, kind="z", position=position, head=head)
+                hook = _make_null_hook(spec, ds, cache, permutation)
+                with torch.no_grad():
+                    logits = model.run_with_hooks(
+                        ds.corrupted_tokens, fwd_hooks=[(spec.hook_name, hook)]
+                    )
+                out[layer, head, p] = baseline.normalize(ds.logit_diff(logits).item())
+                done += 1
+                if progress is not None:
+                    progress(done, total)
+    return out
+
+
 def sweep_component(
     model: HookedTransformer,
     ds: IOIDataset,
