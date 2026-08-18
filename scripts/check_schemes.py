@@ -24,6 +24,10 @@ Six checks:
 6. `xx_mismatch` is what it claims to be: exactly one token differs from the clean
    prompt, it is the start year's century, `YY` is untouched, and the metric's answer
    definition is unchanged.
+7. Phase 9's null sweep is the real sweep with one thing changed: under the identity
+   permutation it reproduces `sweep_heads` cell for cell, and under a derangement no
+   prompt is paired with itself. A null that quietly differed in some other way would
+   produce a plausible threshold that meant nothing.
 """
 
 from __future__ import annotations
@@ -40,6 +44,13 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from causal_interp import agreement, greater_than
+from causal_interp.interventions import (
+    baseline_for,
+    clean_cache_for,
+    derangement,
+    sweep_heads,
+    sweep_heads_null,
+)
 from causal_interp.model import load
 from causal_interp.schemes import Scheme, TaskSpec
 
@@ -168,6 +179,22 @@ def check_agreement() -> None:
         "third" in report.per_scheme and (1, 1) in report.per_scheme["third"],
     )
 
+    per_scheme_thresholds = agreement.compare_schemes(
+        effects, threshold={"primary": 0.02, "alt": 0.5, "third": 0.02},
+        primary="primary", channel="synthetic",
+    )
+    check(
+        "a per-scheme threshold changes only that scheme's discovered set",
+        per_scheme_thresholds.per_scheme["alt"] == []
+        and per_scheme_thresholds.per_scheme["primary"] == report.per_scheme["primary"],
+        "raising alt's floor to 0.5 empties it and leaves the primary's set untouched",
+    )
+    check(
+        "and the flag follows the recalibrated sets",
+        per_scheme_thresholds.primary_blind_spot == [(1, 1)],
+        "1.1 still reaches third's floor",
+    )
+
     agreed = agreement.compare_schemes(
         {"primary": {(0, 0): 0.9}, "alt": {(0, 0): 0.4}},
         threshold=0.02, primary="primary", channel="synthetic",
@@ -267,6 +294,41 @@ def check_xx_mismatch(model) -> None:
     print(f"    example xx_mismatch {ds.prompts[0].corrupted!r}")
 
 
+def check_null_sweep(model) -> None:
+    """Phase 9: the shuffled-source null differs from the real sweep only in its source.
+
+    Two things are checked, both of which follow from how the null is built rather than
+    from the model: the identity permutation must reproduce the real sweep exactly, and
+    a derangement must leave no prompt paired with itself. The first is what makes the
+    calibrated threshold comparable with the effects it judges.
+    """
+    print("\nPhase 9 null sweep")
+    ds = greater_than.GreaterThanDataset(model, n=16, corruption="yy01", seed=0)
+    baseline, _, _ = baseline_for(model, ds)
+    cache, _ = clean_cache_for(model, ds)
+    positions = ("YY", "END")
+
+    identity = torch.arange(len(ds))
+    real = sweep_heads(model, ds, cache, baseline, positions)
+    null_identity = sweep_heads_null(model, ds, cache, baseline, positions, identity)
+    check(
+        "identity permutation reproduces the real sweep",
+        bool(torch.allclose(real, null_identity, atol=1e-6)),
+        f"max abs difference {float((real - null_identity).abs().max()):.2e}",
+    )
+
+    perm = derangement(len(ds), seed=20260815)
+    check("the derangement has no fixed point",
+          bool((perm != torch.arange(len(ds))).all()))
+
+    shuffled = sweep_heads_null(model, ds, cache, baseline, positions, perm)
+    check(
+        "a deranged source changes the measurement",
+        not bool(torch.allclose(real, shuffled, atol=1e-4)),
+        f"median abs difference {float((real - shuffled).abs().median()):.4f}",
+    )
+
+
 def main() -> int:
     check_registry()
     check_blindness()
@@ -275,6 +337,7 @@ def main() -> int:
     model = load("gpt2-small")
     check_backward_compatibility(model)
     check_xx_mismatch(model)
+    check_null_sweep(model)
 
     print()
     if failures:

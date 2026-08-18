@@ -1,0 +1,2200 @@
+{
+  "meta": {
+    "circuit": "greater_than",
+    "task": "greater-than",
+    "role": "known noise (Phase 6)",
+    "model": "gpt2",
+    "model_alias": "gpt2-small",
+    "n_layers": 12,
+    "n_heads": 12,
+    "prompts": 128,
+    "seed": 0,
+    "metric": "logit_diff",
+    "phase8_threshold": 0.02,
+    "null_quantile": 0.99,
+    "null_seed": 20260815,
+    "significant_figures": 2,
+    "real_effects_source": "phase8",
+    "published_head_count": 7,
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "torch": "2.11.0+cu128",
+    "transformer_lens": "3.7.1",
+    "python": "3.12.10",
+    "runtime_seconds": 243.7
+  },
+  "schemes": [
+    {
+      "scheme": "yy01",
+      "provenance": "published",
+      "breaks": "sets the start year to 01, making the greater-than constraint vacuous",
+      "preserves_answer": false,
+      "primary": true
+    },
+    {
+      "scheme": "xx_mismatch",
+      "provenance": "authored",
+      "breaks": "replaces the start year's century, breaking the correspondence between the two years while leaving YY untouched",
+      "preserves_answer": true,
+      "primary": false
+    },
+    {
+      "scheme": "random_vocab_yy",
+      "provenance": "generic",
+      "breaks": "substitutes a uniformly drawn vocabulary token at the YY anchor",
+      "preserves_answer": false,
+      "primary": false
+    },
+    {
+      "scheme": "random_vocab_any",
+      "provenance": "generic",
+      "breaks": "substitutes a uniformly drawn vocabulary token anywhere in the prompt",
+      "preserves_answer": false,
+      "primary": false
+    }
+  ],
+  "floors": {
+    "yy01": {
+      "scheme": "yy01",
+      "threshold": 0.019,
+      "raw_quantile": 0.018302835524082184,
+      "quantile": 0.99,
+      "null_seed": 20260815,
+      "n_cells": 720,
+      "null_median": 7.230602932395414e-05,
+      "null_mean": 0.0013973419554531574,
+      "null_max": 0.1360892504453659,
+      "null_per_head_max_median": 0.001243178965523839,
+      "span": 1.3774697184562683
+    },
+    "xx_mismatch": {
+      "scheme": "xx_mismatch",
+      "threshold": 0.033,
+      "raw_quantile": 0.032518383115530014,
+      "quantile": 0.99,
+      "null_seed": 20260815,
+      "n_cells": 720,
+      "null_median": 6.93411348038353e-05,
+      "null_mean": 0.0016518488992005587,
+      "null_max": 0.2248818427324295,
+      "null_per_head_max_median": 0.0012651248835027218,
+      "span": 1.0194685757160187
+    },
+    "random_vocab_yy": {
+      "scheme": "random_vocab_yy",
+      "threshold": 0.013000000000000001,
+      "raw_quantile": 0.012140857987105846,
+      "quantile": 0.99,
+      "null_seed": 20260815,
+      "n_cells": 720,
+      "null_median": 4.089776848559268e-05,
+      "null_mean": 0.0005490533076226711,
+      "null_max": 0.045183420181274414,
+      "null_per_head_max_median": 0.0006108902744017541,
+      "span": 0.833977666683495
+    },
+    "random_vocab_any": {
+      "scheme": "random_vocab_any",
+      "threshold": 0.041,
+      "raw_quantile": 0.04038230702280998,
+      "quantile": 0.99,
+      "null_seed": 20260815,
+      "n_cells": 720,
+      "null_median": 0.0003969817189499736,
+      "null_mean": 0.0029981229454278946,
+      "null_max": 0.3576890528202057,
+      "null_per_head_max_median": 0.0037938454188406467,
+      "span": 0.3705567717552185
+    }
+  },
+  "before": {
+    "channel": "activation patching / logit_diff / shared 0.02",
+    "threshold": {
+      "yy01": 0.02,
+      "xx_mismatch": 0.02,
+      "random_vocab_yy": 0.02,
+      "random_vocab_any": 0.02
+    },
+    "primary": "yy01",
+    "schemes": [
+      "yy01",
+      "xx_mismatch",
+      "random_vocab_yy",
+      "random_vocab_any"
+    ],
+    "flag": true,
+    "flag_text": "COUNTERFACTUAL-SCHEME-DEPENDENT: 16 head(s) [0.10, 1.5, 3.0, 3.3, 4.4, 4.7, 4.10, 4.11, 5.0, 5.6, 6.8, 6.11, 7.0, 7.6, 8.5, 8.6] are found under another counterfactual and missed under the primary one (yy01). The head list under the primary counterfactual is not the circuit; it is what this counterfactual can see.",
+    "union": [
+      "0.1",
+      "0.10",
+      "1.5",
+      "3.0",
+      "3.3",
+      "4.4",
+      "4.7",
+      "4.10",
+      "4.11",
+      "5.0",
+      "5.1",
+      "5.5",
+      "5.6",
+      "6.8",
+      "6.9",
+      "6.11",
+      "7.0",
+      "7.6",
+      "7.10",
+      "8.5",
+      "8.6",
+      "8.8",
+      "8.11",
+      "9.1",
+      "10.7"
+    ],
+    "intersection": [],
+    "scheme_dependent": [
+      "0.1",
+      "0.10",
+      "1.5",
+      "3.0",
+      "3.3",
+      "4.4",
+      "4.7",
+      "4.10",
+      "4.11",
+      "5.0",
+      "5.1",
+      "5.5",
+      "5.6",
+      "6.8",
+      "6.9",
+      "6.11",
+      "7.0",
+      "7.6",
+      "7.10",
+      "8.5",
+      "8.6",
+      "8.8",
+      "8.11",
+      "9.1",
+      "10.7"
+    ],
+    "per_scheme": {
+      "yy01": [
+        "0.1",
+        "5.1",
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.8",
+        "8.11",
+        "9.1",
+        "10.7"
+      ],
+      "xx_mismatch": [
+        "0.1",
+        "0.10",
+        "1.5",
+        "3.0",
+        "3.3",
+        "4.4",
+        "4.10",
+        "4.11",
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.5",
+        "8.11",
+        "9.1",
+        "10.7"
+      ],
+      "random_vocab_yy": [
+        "5.0",
+        "6.9",
+        "8.6"
+      ],
+      "random_vocab_any": [
+        "4.7",
+        "4.11",
+        "5.6",
+        "6.8",
+        "6.11",
+        "7.0",
+        "7.6",
+        "8.5",
+        "8.6",
+        "9.1"
+      ]
+    },
+    "blind_spots": {
+      "yy01": [
+        "0.10",
+        "1.5",
+        "3.0",
+        "3.3",
+        "4.4",
+        "4.7",
+        "4.10",
+        "4.11",
+        "5.0",
+        "5.6",
+        "6.8",
+        "6.11",
+        "7.0",
+        "7.6",
+        "8.5",
+        "8.6"
+      ],
+      "xx_mismatch": [
+        "4.7",
+        "5.0",
+        "5.1",
+        "5.6",
+        "6.8",
+        "6.11",
+        "7.0",
+        "7.6",
+        "8.6",
+        "8.8"
+      ],
+      "random_vocab_yy": [
+        "0.1",
+        "0.10",
+        "1.5",
+        "3.0",
+        "3.3",
+        "4.4",
+        "4.7",
+        "4.10",
+        "4.11",
+        "5.1",
+        "5.5",
+        "5.6",
+        "6.8",
+        "6.11",
+        "7.0",
+        "7.6",
+        "7.10",
+        "8.5",
+        "8.8",
+        "8.11",
+        "9.1",
+        "10.7"
+      ],
+      "random_vocab_any": [
+        "0.1",
+        "0.10",
+        "1.5",
+        "3.0",
+        "3.3",
+        "4.4",
+        "4.10",
+        "5.0",
+        "5.1",
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.8",
+        "8.11",
+        "10.7"
+      ]
+    },
+    "only_in": {
+      "yy01": [
+        "5.1",
+        "8.8"
+      ],
+      "xx_mismatch": [
+        "0.10",
+        "1.5",
+        "3.0",
+        "3.3",
+        "4.4",
+        "4.10"
+      ],
+      "random_vocab_yy": [
+        "5.0"
+      ],
+      "random_vocab_any": [
+        "4.7",
+        "5.6",
+        "6.8",
+        "6.11",
+        "7.0",
+        "7.6"
+      ]
+    },
+    "power": {
+      "yy01": {
+        "scheme": "yy01",
+        "span": 1.3774697184562683,
+        "power": 1.0,
+        "low_power": false
+      },
+      "xx_mismatch": {
+        "scheme": "xx_mismatch",
+        "span": 1.0194685757160187,
+        "power": 0.7401023500237364,
+        "low_power": false
+      },
+      "random_vocab_yy": {
+        "scheme": "random_vocab_yy",
+        "span": 0.833977666683495,
+        "power": 0.6054417425728492,
+        "low_power": false
+      },
+      "random_vocab_any": {
+        "scheme": "random_vocab_any",
+        "span": 0.3705567717552185,
+        "power": 0.2690126445541771,
+        "low_power": false
+      }
+    },
+    "verdicts": [
+      {
+        "head": "0.1",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.030743561685085297,
+          "xx_mismatch": 0.10873851925134659,
+          "random_vocab_yy": -0.0037358650006353855,
+          "random_vocab_any": -0.013789001852273941
+        }
+      },
+      {
+        "head": "0.10",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.009429640136659145,
+          "xx_mismatch": 0.03841378912329674,
+          "random_vocab_yy": 0.0005577107658609748,
+          "random_vocab_any": -0.006511594168841839
+        }
+      },
+      {
+        "head": "1.5",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.002236467320472002,
+          "xx_mismatch": 0.021993504837155342,
+          "random_vocab_yy": -0.0016105991089716554,
+          "random_vocab_any": -0.002081419574096799
+        }
+      },
+      {
+        "head": "3.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.0009617869509384036,
+          "xx_mismatch": 0.03969861939549446,
+          "random_vocab_yy": -0.00014186522457748652,
+          "random_vocab_any": -0.0014696205034852028
+        }
+      },
+      {
+        "head": "3.3",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.0018494505202397704,
+          "xx_mismatch": 0.024145331233739853,
+          "random_vocab_yy": -0.0015178954927250743,
+          "random_vocab_any": 0.002666517160832882
+        }
+      },
+      {
+        "head": "4.4",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.0035167729947715998,
+          "xx_mismatch": 0.02783169597387314,
+          "random_vocab_yy": -0.0007424190989695489,
+          "random_vocab_any": -0.002183640608564019
+        }
+      },
+      {
+        "head": "4.7",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": -0.005120313726365566,
+          "xx_mismatch": -0.009822791442275047,
+          "random_vocab_yy": -0.003223109059035778,
+          "random_vocab_any": -0.030661046504974365
+        }
+      },
+      {
+        "head": "4.10",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.00714682973921299,
+          "xx_mismatch": -0.07892962545156479,
+          "random_vocab_yy": 0.0010148639557883143,
+          "random_vocab_any": 0.001007896033115685
+        }
+      },
+      {
+        "head": "4.11",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": 0.0019139244686812162,
+          "xx_mismatch": 0.04447991028428078,
+          "random_vocab_yy": -0.0018751990282908082,
+          "random_vocab_any": 0.06129370257258415
+        }
+      },
+      {
+        "head": "5.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_yy"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.0011065721046179533,
+          "xx_mismatch": -0.0021932204253971577,
+          "random_vocab_yy": -0.03645728528499603,
+          "random_vocab_any": 0.0015247926348820329
+        }
+      },
+      {
+        "head": "5.1",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01"
+        ],
+        "missing_in": [
+          "xx_mismatch",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.055836111307144165,
+          "xx_mismatch": 0.0050567579455673695,
+          "random_vocab_yy": -0.014429301023483276,
+          "random_vocab_any": 0.009288053028285503
+        }
+      },
+      {
+        "head": "5.5",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.052047550678253174,
+          "xx_mismatch": 0.15368452668190002,
+          "random_vocab_yy": -0.015178327448666096,
+          "random_vocab_any": 0.007443085312843323
+        }
+      },
+      {
+        "head": "5.6",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": 0.0023715165443718433,
+          "xx_mismatch": 0.006231566891074181,
+          "random_vocab_yy": -0.001525907893665135,
+          "random_vocab_any": 0.0229807049036026
+        }
+      },
+      {
+        "head": "6.8",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": -0.0012282937532290816,
+          "xx_mismatch": -0.005764186382293701,
+          "random_vocab_yy": -0.0022553608287125826,
+          "random_vocab_any": 0.03372028470039368
+        }
+      },
+      {
+        "head": "6.9",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_yy"
+        ],
+        "missing_in": [
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.07592262327671051,
+          "xx_mismatch": 0.03814031556248665,
+          "random_vocab_yy": -0.037819117307662964,
+          "random_vocab_any": -0.0064842491410672665
+        }
+      },
+      {
+        "head": "6.11",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": 0.0024000322446227074,
+          "xx_mismatch": -0.002276768907904625,
+          "random_vocab_yy": -0.0009255617624148726,
+          "random_vocab_any": 0.032510194927453995
+        }
+      },
+      {
+        "head": "7.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": -0.0012630404671654105,
+          "xx_mismatch": 0.0009261660161428154,
+          "random_vocab_yy": 0.0013490032870322466,
+          "random_vocab_any": 0.025004539638757706
+        }
+      },
+      {
+        "head": "7.6",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": -0.0015567647060379386,
+          "xx_mismatch": 0.0036878257524222136,
+          "random_vocab_yy": 0.005667330697178841,
+          "random_vocab_any": 0.023469051346182823
+        }
+      },
+      {
+        "head": "7.10",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.13455705344676971,
+          "xx_mismatch": 0.14278195798397064,
+          "random_vocab_yy": -0.00868250709027052,
+          "random_vocab_any": 0.000825168623123318
+        }
+      },
+      {
+        "head": "8.5",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": 0.0007051027496345341,
+          "xx_mismatch": 0.03924548998475075,
+          "random_vocab_yy": 0.0004844090435653925,
+          "random_vocab_any": 0.08734546601772308
+        }
+      },
+      {
+        "head": "8.6",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch"
+        ],
+        "effects": {
+          "yy01": -0.00436073262244463,
+          "xx_mismatch": -0.006136427167803049,
+          "random_vocab_yy": -0.024404680356383324,
+          "random_vocab_any": -0.0319463312625885
+        }
+      },
+      {
+        "head": "8.8",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01"
+        ],
+        "missing_in": [
+          "xx_mismatch",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.029260531067848206,
+          "xx_mismatch": -0.008903714828193188,
+          "random_vocab_yy": -0.01005532220005989,
+          "random_vocab_any": -0.0005253413110040128
+        }
+      },
+      {
+        "head": "8.11",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.08280054479837418,
+          "xx_mismatch": 0.02930072322487831,
+          "random_vocab_yy": 0.0015206369571387768,
+          "random_vocab_any": 0.007399494759738445
+        }
+      },
+      {
+        "head": "9.1",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": 0.2522035837173462,
+          "xx_mismatch": 0.06749061495065689,
+          "random_vocab_yy": 0.0021789332386106253,
+          "random_vocab_any": 0.04057835042476654
+        }
+      },
+      {
+        "head": "10.7",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.04014399275183678,
+          "xx_mismatch": -0.0235426165163517,
+          "random_vocab_yy": 0.002557791769504547,
+          "random_vocab_any": -0.005922555457800627
+        }
+      }
+    ]
+  },
+  "after": {
+    "channel": "activation patching / logit_diff / per-scheme null floor",
+    "threshold": {
+      "yy01": 0.019,
+      "xx_mismatch": 0.033,
+      "random_vocab_yy": 0.013000000000000001,
+      "random_vocab_any": 0.041
+    },
+    "primary": "yy01",
+    "schemes": [
+      "yy01",
+      "xx_mismatch",
+      "random_vocab_yy",
+      "random_vocab_any"
+    ],
+    "flag": true,
+    "flag_text": "COUNTERFACTUAL-SCHEME-DEPENDENT: 8 head(s) [0.10, 3.0, 4.10, 4.11, 5.0, 7.11, 8.5, 8.6] are found under another counterfactual and missed under the primary one (yy01). The head list under the primary counterfactual is not the circuit; it is what this counterfactual can see.",
+    "union": [
+      "0.1",
+      "0.10",
+      "3.0",
+      "4.10",
+      "4.11",
+      "5.0",
+      "5.1",
+      "5.5",
+      "6.9",
+      "7.10",
+      "7.11",
+      "8.5",
+      "8.6",
+      "8.8",
+      "8.11",
+      "9.1",
+      "10.7"
+    ],
+    "intersection": [],
+    "scheme_dependent": [
+      "0.1",
+      "0.10",
+      "3.0",
+      "4.10",
+      "4.11",
+      "5.0",
+      "5.1",
+      "5.5",
+      "6.9",
+      "7.10",
+      "7.11",
+      "8.5",
+      "8.6",
+      "8.8",
+      "8.11",
+      "9.1",
+      "10.7"
+    ],
+    "per_scheme": {
+      "yy01": [
+        "0.1",
+        "5.1",
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.8",
+        "8.11",
+        "9.1",
+        "10.7"
+      ],
+      "xx_mismatch": [
+        "0.1",
+        "0.10",
+        "3.0",
+        "4.10",
+        "4.11",
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.5",
+        "9.1"
+      ],
+      "random_vocab_yy": [
+        "5.0",
+        "5.1",
+        "5.5",
+        "6.9",
+        "7.11",
+        "8.6"
+      ],
+      "random_vocab_any": [
+        "4.11",
+        "8.5"
+      ]
+    },
+    "blind_spots": {
+      "yy01": [
+        "0.10",
+        "3.0",
+        "4.10",
+        "4.11",
+        "5.0",
+        "7.11",
+        "8.5",
+        "8.6"
+      ],
+      "xx_mismatch": [
+        "5.0",
+        "5.1",
+        "7.11",
+        "8.6",
+        "8.8",
+        "8.11",
+        "10.7"
+      ],
+      "random_vocab_yy": [
+        "0.1",
+        "0.10",
+        "3.0",
+        "4.10",
+        "4.11",
+        "7.10",
+        "8.5",
+        "8.8",
+        "8.11",
+        "9.1",
+        "10.7"
+      ],
+      "random_vocab_any": [
+        "0.1",
+        "0.10",
+        "3.0",
+        "4.10",
+        "5.0",
+        "5.1",
+        "5.5",
+        "6.9",
+        "7.10",
+        "7.11",
+        "8.6",
+        "8.8",
+        "8.11",
+        "9.1",
+        "10.7"
+      ]
+    },
+    "only_in": {
+      "yy01": [
+        "8.8",
+        "8.11",
+        "10.7"
+      ],
+      "xx_mismatch": [
+        "0.10",
+        "3.0",
+        "4.10"
+      ],
+      "random_vocab_yy": [
+        "5.0",
+        "7.11",
+        "8.6"
+      ],
+      "random_vocab_any": []
+    },
+    "power": {
+      "yy01": {
+        "scheme": "yy01",
+        "span": 1.3774697184562683,
+        "power": 1.0,
+        "low_power": false
+      },
+      "xx_mismatch": {
+        "scheme": "xx_mismatch",
+        "span": 1.0194685757160187,
+        "power": 0.7401023500237364,
+        "low_power": false
+      },
+      "random_vocab_yy": {
+        "scheme": "random_vocab_yy",
+        "span": 0.833977666683495,
+        "power": 0.6054417425728492,
+        "low_power": false
+      },
+      "random_vocab_any": {
+        "scheme": "random_vocab_any",
+        "span": 0.3705567717552185,
+        "power": 0.2690126445541771,
+        "low_power": false
+      }
+    },
+    "verdicts": [
+      {
+        "head": "0.1",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.030743561685085297,
+          "xx_mismatch": 0.10873851925134659,
+          "random_vocab_yy": -0.0037358650006353855,
+          "random_vocab_any": -0.013789001852273941
+        }
+      },
+      {
+        "head": "0.10",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.009429640136659145,
+          "xx_mismatch": 0.03841378912329674,
+          "random_vocab_yy": 0.0005577107658609748,
+          "random_vocab_any": -0.006511594168841839
+        }
+      },
+      {
+        "head": "3.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.0009617869509384036,
+          "xx_mismatch": 0.03969861939549446,
+          "random_vocab_yy": -0.00014186522457748652,
+          "random_vocab_any": -0.0014696205034852028
+        }
+      },
+      {
+        "head": "4.10",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.00714682973921299,
+          "xx_mismatch": -0.07892962545156479,
+          "random_vocab_yy": 0.0010148639557883143,
+          "random_vocab_any": 0.001007896033115685
+        }
+      },
+      {
+        "head": "4.11",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": 0.0019139244686812162,
+          "xx_mismatch": 0.04447991028428078,
+          "random_vocab_yy": -0.0018751990282908082,
+          "random_vocab_any": 0.06129370257258415
+        }
+      },
+      {
+        "head": "5.0",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_yy"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.0011065721046179533,
+          "xx_mismatch": -0.0021932204253971577,
+          "random_vocab_yy": -0.03645728528499603,
+          "random_vocab_any": 0.0015247926348820329
+        }
+      },
+      {
+        "head": "5.1",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "random_vocab_yy"
+        ],
+        "missing_in": [
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.055836111307144165,
+          "xx_mismatch": 0.0050567579455673695,
+          "random_vocab_yy": -0.014429301023483276,
+          "random_vocab_any": 0.009288053028285503
+        }
+      },
+      {
+        "head": "5.5",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_yy"
+        ],
+        "missing_in": [
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.052047550678253174,
+          "xx_mismatch": 0.15368452668190002,
+          "random_vocab_yy": -0.015178327448666096,
+          "random_vocab_any": 0.007443085312843323
+        }
+      },
+      {
+        "head": "6.9",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_yy"
+        ],
+        "missing_in": [
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.07592262327671051,
+          "xx_mismatch": 0.03814031556248665,
+          "random_vocab_yy": -0.037819117307662964,
+          "random_vocab_any": -0.0064842491410672665
+        }
+      },
+      {
+        "head": "7.10",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.13455705344676971,
+          "xx_mismatch": 0.14278195798397064,
+          "random_vocab_yy": -0.00868250709027052,
+          "random_vocab_any": 0.000825168623123318
+        }
+      },
+      {
+        "head": "7.11",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_yy"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.007906281389296055,
+          "xx_mismatch": 0.01433011144399643,
+          "random_vocab_yy": -0.017287086695432663,
+          "random_vocab_any": -0.0153357507660985
+        }
+      },
+      {
+        "head": "8.5",
+        "status": "scheme-dependent",
+        "found_in": [
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "missing_in": [
+          "yy01",
+          "random_vocab_yy"
+        ],
+        "effects": {
+          "yy01": 0.0007051027496345341,
+          "xx_mismatch": 0.03924548998475075,
+          "random_vocab_yy": 0.0004844090435653925,
+          "random_vocab_any": 0.08734546601772308
+        }
+      },
+      {
+        "head": "8.6",
+        "status": "scheme-dependent",
+        "found_in": [
+          "random_vocab_yy"
+        ],
+        "missing_in": [
+          "yy01",
+          "xx_mismatch",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.00436073262244463,
+          "xx_mismatch": -0.006136427167803049,
+          "random_vocab_yy": -0.024404680356383324,
+          "random_vocab_any": -0.0319463312625885
+        }
+      },
+      {
+        "head": "8.8",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01"
+        ],
+        "missing_in": [
+          "xx_mismatch",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.029260531067848206,
+          "xx_mismatch": -0.008903714828193188,
+          "random_vocab_yy": -0.01005532220005989,
+          "random_vocab_any": -0.0005253413110040128
+        }
+      },
+      {
+        "head": "8.11",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01"
+        ],
+        "missing_in": [
+          "xx_mismatch",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.08280054479837418,
+          "xx_mismatch": 0.02930072322487831,
+          "random_vocab_yy": 0.0015206369571387768,
+          "random_vocab_any": 0.007399494759738445
+        }
+      },
+      {
+        "head": "9.1",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01",
+          "xx_mismatch"
+        ],
+        "missing_in": [
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": 0.2522035837173462,
+          "xx_mismatch": 0.06749061495065689,
+          "random_vocab_yy": 0.0021789332386106253,
+          "random_vocab_any": 0.04057835042476654
+        }
+      },
+      {
+        "head": "10.7",
+        "status": "scheme-dependent",
+        "found_in": [
+          "yy01"
+        ],
+        "missing_in": [
+          "xx_mismatch",
+          "random_vocab_yy",
+          "random_vocab_any"
+        ],
+        "effects": {
+          "yy01": -0.04014399275183678,
+          "xx_mismatch": -0.0235426165163517,
+          "random_vocab_yy": 0.002557791769504547,
+          "random_vocab_any": -0.005922555457800627
+        }
+      }
+    ]
+  },
+  "scored_before": {
+    "flag": true,
+    "n_flagged": 16,
+    "flagged": [
+      "0.10",
+      "1.5",
+      "3.0",
+      "3.3",
+      "4.4",
+      "4.7",
+      "4.10",
+      "4.11",
+      "5.0",
+      "5.6",
+      "6.8",
+      "6.11",
+      "7.0",
+      "7.6",
+      "8.5",
+      "8.6"
+    ],
+    "published_in_blind_spot": [],
+    "unpublished_in_blind_spot": [
+      "0.10",
+      "1.5",
+      "3.0",
+      "3.3",
+      "4.10",
+      "4.11",
+      "4.4",
+      "4.7",
+      "5.0",
+      "5.6",
+      "6.11",
+      "6.8",
+      "7.0",
+      "7.6",
+      "8.5",
+      "8.6"
+    ],
+    "per_scheme": {
+      "yy01": {
+        "label": "yy01",
+        "n_discovered": 9,
+        "matches": [
+          "5.1",
+          "5.5",
+          "6.9",
+          "7.10",
+          "8.8",
+          "8.11",
+          "9.1"
+        ],
+        "misses": [],
+        "precision": 0.7777777777777778,
+        "recall": 1.0
+      },
+      "xx_mismatch": {
+        "label": "xx_mismatch",
+        "n_discovered": 15,
+        "matches": [
+          "5.5",
+          "6.9",
+          "7.10",
+          "8.11",
+          "9.1"
+        ],
+        "misses": [
+          "5.1",
+          "8.8"
+        ],
+        "precision": 0.3333333333333333,
+        "recall": 0.7142857142857143
+      },
+      "random_vocab_yy": {
+        "label": "random_vocab_yy",
+        "n_discovered": 3,
+        "matches": [
+          "6.9"
+        ],
+        "misses": [
+          "5.1",
+          "5.5",
+          "7.10",
+          "8.8",
+          "8.11",
+          "9.1"
+        ],
+        "precision": 0.3333333333333333,
+        "recall": 0.14285714285714285
+      },
+      "random_vocab_any": {
+        "label": "random_vocab_any",
+        "n_discovered": 10,
+        "matches": [
+          "9.1"
+        ],
+        "misses": [
+          "5.1",
+          "5.5",
+          "6.9",
+          "7.10",
+          "8.8",
+          "8.11"
+        ],
+        "precision": 0.1,
+        "recall": 0.14285714285714285
+      }
+    },
+    "primary": {
+      "label": "primary",
+      "n_discovered": 9,
+      "matches": [
+        "5.1",
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.8",
+        "8.11",
+        "9.1"
+      ],
+      "misses": [],
+      "precision": 0.7777777777777778,
+      "recall": 1.0
+    },
+    "union": {
+      "label": "union",
+      "n_discovered": 25,
+      "matches": [
+        "5.1",
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.8",
+        "8.11",
+        "9.1"
+      ],
+      "misses": [],
+      "precision": 0.28,
+      "recall": 1.0
+    },
+    "blind_spot_contributions": {
+      "xx_mismatch": [
+        "0.10",
+        "1.5",
+        "3.0",
+        "3.3",
+        "4.10",
+        "4.11",
+        "4.4",
+        "8.5"
+      ],
+      "random_vocab_yy": [
+        "5.0",
+        "8.6"
+      ],
+      "random_vocab_any": [
+        "4.11",
+        "4.7",
+        "5.6",
+        "6.11",
+        "6.8",
+        "7.0",
+        "7.6",
+        "8.5",
+        "8.6"
+      ]
+    }
+  },
+  "scored_after": {
+    "flag": true,
+    "n_flagged": 8,
+    "flagged": [
+      "0.10",
+      "3.0",
+      "4.10",
+      "4.11",
+      "5.0",
+      "7.11",
+      "8.5",
+      "8.6"
+    ],
+    "published_in_blind_spot": [],
+    "unpublished_in_blind_spot": [
+      "0.10",
+      "3.0",
+      "4.10",
+      "4.11",
+      "5.0",
+      "7.11",
+      "8.5",
+      "8.6"
+    ],
+    "per_scheme": {
+      "yy01": {
+        "label": "yy01",
+        "n_discovered": 9,
+        "matches": [
+          "5.1",
+          "5.5",
+          "6.9",
+          "7.10",
+          "8.8",
+          "8.11",
+          "9.1"
+        ],
+        "misses": [],
+        "precision": 0.7777777777777778,
+        "recall": 1.0
+      },
+      "xx_mismatch": {
+        "label": "xx_mismatch",
+        "n_discovered": 10,
+        "matches": [
+          "5.5",
+          "6.9",
+          "7.10",
+          "9.1"
+        ],
+        "misses": [
+          "5.1",
+          "8.8",
+          "8.11"
+        ],
+        "precision": 0.4,
+        "recall": 0.5714285714285714
+      },
+      "random_vocab_yy": {
+        "label": "random_vocab_yy",
+        "n_discovered": 6,
+        "matches": [
+          "5.1",
+          "5.5",
+          "6.9"
+        ],
+        "misses": [
+          "7.10",
+          "8.8",
+          "8.11",
+          "9.1"
+        ],
+        "precision": 0.5,
+        "recall": 0.42857142857142855
+      },
+      "random_vocab_any": {
+        "label": "random_vocab_any",
+        "n_discovered": 2,
+        "matches": [],
+        "misses": [
+          "5.1",
+          "5.5",
+          "6.9",
+          "7.10",
+          "8.8",
+          "8.11",
+          "9.1"
+        ],
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    },
+    "primary": {
+      "label": "primary",
+      "n_discovered": 9,
+      "matches": [
+        "5.1",
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.8",
+        "8.11",
+        "9.1"
+      ],
+      "misses": [],
+      "precision": 0.7777777777777778,
+      "recall": 1.0
+    },
+    "union": {
+      "label": "union",
+      "n_discovered": 17,
+      "matches": [
+        "5.1",
+        "5.5",
+        "6.9",
+        "7.10",
+        "8.8",
+        "8.11",
+        "9.1"
+      ],
+      "misses": [],
+      "precision": 0.4117647058823529,
+      "recall": 1.0
+    },
+    "blind_spot_contributions": {
+      "xx_mismatch": [
+        "0.10",
+        "3.0",
+        "4.10",
+        "4.11",
+        "8.5"
+      ],
+      "random_vocab_yy": [
+        "5.0",
+        "7.11",
+        "8.6"
+      ],
+      "random_vocab_any": [
+        "4.11",
+        "8.5"
+      ]
+    }
+  },
+  "effects": {
+    "yy01": {
+      "0.0": 0.001990298042073846,
+      "0.1": 0.030743561685085297,
+      "0.2": -0.0009253526804968715,
+      "0.3": 0.009747164323925972,
+      "0.4": 0.010950013995170593,
+      "0.5": 0.016862016171216965,
+      "0.6": 0.0021389343310147524,
+      "0.7": 0.0056367977522313595,
+      "0.8": 0.0019284635782241821,
+      "0.9": 0.0011942393612116575,
+      "0.10": -0.009429640136659145,
+      "0.11": 0.0007593214395456016,
+      "1.0": 0.0033527754712849855,
+      "1.1": -0.0005289028049446642,
+      "1.2": -0.0005754192243330181,
+      "1.3": 0.00037970399716868997,
+      "1.4": 0.0008238819427788258,
+      "1.5": -0.002236467320472002,
+      "1.6": 0.003626724937930703,
+      "1.7": 0.002833954757079482,
+      "1.8": -0.0004613133205566555,
+      "1.9": -0.0025792610831558704,
+      "1.10": -0.0005857610376551747,
+      "1.11": -0.005995255894958973,
+      "2.0": -0.00035002001095563173,
+      "2.1": 0.0013346108607947826,
+      "2.2": 0.0007871447596698999,
+      "2.3": -0.0004973149043507874,
+      "2.4": 0.004744807258248329,
+      "2.5": -0.0007925969548523426,
+      "2.6": -0.0010119815124198794,
+      "2.7": -0.001815439434722066,
+      "2.8": 0.0009187321993522346,
+      "2.9": 0.0029851440340280533,
+      "2.10": -0.0007828176603652537,
+      "2.11": -0.00042513865628279746,
+      "3.0": 0.0009617869509384036,
+      "3.1": 0.0009391994681209326,
+      "3.2": -0.0004331870877649635,
+      "3.3": 0.0018494505202397704,
+      "3.4": -0.002396527212113142,
+      "3.5": 0.0007724325987510383,
+      "3.6": 0.0029456375632435083,
+      "3.7": -0.002061998238787055,
+      "3.8": -0.000523796770721674,
+      "3.9": 0.006049907300621271,
+      "3.10": -0.0022843251936137676,
+      "3.11": -0.0003570732078514993,
+      "4.0": -0.0013709586346521974,
+      "4.1": -0.001608343911357224,
+      "4.2": -0.0002543908485677093,
+      "4.3": -0.002575885970145464,
+      "4.4": -0.0035167729947715998,
+      "4.5": -0.0005826455308124423,
+      "4.6": -0.002921881852671504,
+      "4.7": -0.005120313726365566,
+      "4.8": 0.006244800053536892,
+      "4.9": 0.000939675432164222,
+      "4.10": -0.00714682973921299,
+      "4.11": 0.0019139244686812162,
+      "5.0": -0.0011065721046179533,
+      "5.1": 0.055836111307144165,
+      "5.2": 0.00047117911162786186,
+      "5.3": -0.00044876468018628657,
+      "5.4": -7.472920697182417e-05,
+      "5.5": 0.052047550678253174,
+      "5.6": 0.0023715165443718433,
+      "5.7": 0.0019472000421956182,
+      "5.8": -0.0040064286440610886,
+      "5.9": 0.0002540014102123678,
+      "5.10": 0.0010212415363639593,
+      "5.11": -0.0020465070847421885,
+      "6.0": -0.0007185168215073645,
+      "6.1": 0.0012451262446120381,
+      "6.2": 0.0002473809290677309,
+      "6.3": -0.0006055791745893657,
+      "6.4": 0.003706300398334861,
+      "6.5": 0.001443394459784031,
+      "6.6": -0.003257276024669409,
+      "6.7": -0.0001040670249494724,
+      "6.8": -0.0012282937532290816,
+      "6.9": 0.07592262327671051,
+      "6.10": 0.0006150123081170022,
+      "6.11": 0.0024000322446227074,
+      "7.0": -0.0012630404671654105,
+      "7.1": -0.0004438317846506834,
+      "7.2": -0.0002546072064433247,
+      "7.3": 0.003209288464859128,
+      "7.4": 0.0007540856604464352,
+      "7.5": -0.003072075778618455,
+      "7.6": -0.0015567647060379386,
+      "7.7": 0.0023082541301846504,
+      "7.8": -0.0015003392472863197,
+      "7.9": -0.0013663718709722161,
+      "7.10": 0.13455705344676971,
+      "7.11": 0.007906281389296055,
+      "8.0": 0.00037831932422704995,
+      "8.1": 0.013343555852770805,
+      "8.2": -0.0007382484036497772,
+      "8.3": 0.00012925080955028534,
+      "8.4": -0.00022141827503219247,
+      "8.5": 0.0007051027496345341,
+      "8.6": -0.00436073262244463,
+      "8.7": 0.005448568612337112,
+      "8.8": 0.029260531067848206,
+      "8.9": -0.015214425511658192,
+      "8.10": -0.0029996398370712996,
+      "8.11": 0.08280054479837418,
+      "9.0": -0.0003693189355544746,
+      "9.1": 0.2522035837173462,
+      "9.2": -0.00013184707495383918,
+      "9.3": 0.0016923764487728477,
+      "9.4": -0.0006330996402539313,
+      "9.5": -0.008403119631111622,
+      "9.6": 4.83338299090974e-05,
+      "9.7": -0.0010772342793643475,
+      "9.8": 0.00019234008505009115,
+      "9.9": 0.0011222362518310547,
+      "9.10": -0.0004796602588612586,
+      "9.11": -0.00036014546640217304,
+      "10.0": 0.000297748512821272,
+      "10.1": 0.0004629575996659696,
+      "10.2": 0.013668002560734749,
+      "10.3": 0.004099288489669561,
+      "10.4": -0.0073449681513011456,
+      "10.5": 2.886183028749656e-05,
+      "10.6": -9.173475700663403e-05,
+      "10.7": -0.04014399275183678,
+      "10.8": -0.0004041088977828622,
+      "10.9": -1.877966133179143e-05,
+      "10.10": 0.00030458535184152424,
+      "10.11": 1.1466844625829253e-05,
+      "11.0": 0.003222096711397171,
+      "11.1": 0.0003007774939760566,
+      "11.2": 0.0005255709402263165,
+      "11.3": -0.0001106442286982201,
+      "11.4": -0.0005239266320131719,
+      "11.5": 7.533500320278108e-05,
+      "11.6": 0.0001831666158977896,
+      "11.7": -0.0003019890864379704,
+      "11.8": 0.005924766883254051,
+      "11.9": -0.0006562496419064701,
+      "11.10": -2.202499490522314e-05,
+      "11.11": 3.8944000380070065e-07
+    },
+    "xx_mismatch": {
+      "0.0": -8.609175711171702e-05,
+      "0.1": 0.10873851925134659,
+      "0.2": -0.0008942726417444646,
+      "0.3": 0.0005475376965478063,
+      "0.4": 0.0006107983645051718,
+      "0.5": 0.0030802139081060886,
+      "0.6": -0.0012354678474366665,
+      "0.7": -0.004563184455037117,
+      "0.8": -0.0008549101185053587,
+      "0.9": 0.0009355791262350976,
+      "0.10": 0.03841378912329674,
+      "0.11": -0.00023906906426418573,
+      "1.0": 0.006543353665620089,
+      "1.1": 0.0004132404283154756,
+      "1.2": -0.00018514842668082565,
+      "1.3": 0.0007866360247135162,
+      "1.4": 0.0003036451817024499,
+      "1.5": 0.021993504837155342,
+      "1.6": -0.00040726223960518837,
+      "1.7": 0.0021954714320600033,
+      "1.8": 0.0008347684633918107,
+      "1.9": -0.00041250960202887654,
+      "1.10": -0.00021854735678061843,
+      "1.11": 0.0013714460656046867,
+      "2.0": 0.0018050034996122122,
+      "2.1": 0.002307858318090439,
+      "2.2": 0.01796215958893299,
+      "2.3": 0.00040183946839533746,
+      "2.4": -0.002687846077606082,
+      "2.5": -0.00023401172074954957,
+      "2.6": 0.0003746379807125777,
+      "2.7": 0.0011627210769802332,
+      "2.8": 0.0005052373162470758,
+      "2.9": 0.002965444466099143,
+      "2.10": -0.0009191500721499324,
+      "2.11": -0.0002774668682832271,
+      "3.0": 0.03969861939549446,
+      "3.1": -0.0005047841696068645,
+      "3.2": 0.002149048959836364,
+      "3.3": 0.024145331233739853,
+      "3.4": -0.0056971400044858456,
+      "3.5": -0.0002599707804620266,
+      "3.6": 0.007440783083438873,
+      "3.7": 0.0017679650336503983,
+      "3.8": 0.00030032722861506045,
+      "3.9": -0.0005186260677874088,
+      "3.10": 0.001240788260474801,
+      "3.11": 0.00032871266012080014,
+      "4.0": 0.0005674163112416863,
+      "4.1": 0.001209201873280108,
+      "4.2": 0.0007782753091305494,
+      "4.3": -0.004807764198631048,
+      "4.4": 0.02783169597387314,
+      "4.5": 0.0029683238826692104,
+      "4.6": 0.0005807466222904623,
+      "4.7": -0.009822791442275047,
+      "4.8": 0.000889215269125998,
+      "4.9": -9.807736205402762e-05,
+      "4.10": -0.07892962545156479,
+      "4.11": 0.04447991028428078,
+      "5.0": -0.0021932204253971577,
+      "5.1": 0.0050567579455673695,
+      "5.2": 0.002054421231150627,
+      "5.3": -0.00107291666790843,
+      "5.4": 0.0013482056092470884,
+      "5.5": 0.15368452668190002,
+      "5.6": 0.006231566891074181,
+      "5.7": -0.0010291838552802801,
+      "5.8": 0.01686880923807621,
+      "5.9": 0.010900414548814297,
+      "5.10": 0.0025795954279601574,
+      "5.11": 0.0003674320178106427,
+      "6.0": -0.000624742591753602,
+      "6.1": -0.00234657758846879,
+      "6.2": -0.0019994627218693495,
+      "6.3": 0.0014378639170899987,
+      "6.4": -0.0018493502866476774,
+      "6.5": 0.004863526672124863,
+      "6.6": -0.004243329633027315,
+      "6.7": 0.0037086105439811945,
+      "6.8": -0.005764186382293701,
+      "6.9": 0.03814031556248665,
+      "6.10": 0.0017269216477870941,
+      "6.11": -0.002276768907904625,
+      "7.0": 0.0009261660161428154,
+      "7.1": -0.0007450079428963363,
+      "7.2": -0.0001894018641905859,
+      "7.3": 0.00046466162893921137,
+      "7.4": 0.0003715977363754064,
+      "7.5": 0.0019819228909909725,
+      "7.6": 0.0036878257524222136,
+      "7.7": -0.0034101689234375954,
+      "7.8": 0.0036403220146894455,
+      "7.9": -0.0021297549828886986,
+      "7.10": 0.14278195798397064,
+      "7.11": 0.01433011144399643,
+      "8.0": -0.006161757744848728,
+      "8.1": -0.0013398011215031147,
+      "8.2": 0.0011153339873999357,
+      "8.3": 0.00034392852103337646,
+      "8.4": -0.0003015111724380404,
+      "8.5": 0.03924548998475075,
+      "8.6": -0.006136427167803049,
+      "8.7": 0.0024819858372211456,
+      "8.8": -0.008903714828193188,
+      "8.9": -0.0003435484832152724,
+      "8.10": 0.007252930663526058,
+      "8.11": 0.02930072322487831,
+      "9.0": -0.0006115437718108296,
+      "9.1": 0.06749061495065689,
+      "9.2": 0.00030089725623838603,
+      "9.3": -0.000778684567194432,
+      "9.4": -0.000696071598213166,
+      "9.5": -0.00935050006955862,
+      "9.6": 0.0006441972800530493,
+      "9.7": -0.0004088554414920509,
+      "9.8": 0.0010991973103955388,
+      "9.9": 0.0005288284737616777,
+      "9.10": -0.0033073851373046637,
+      "9.11": -0.00039882847340777516,
+      "10.0": 0.0014155004173517227,
+      "10.1": 0.00035715653211809695,
+      "10.2": -0.009317963384091854,
+      "10.3": -0.0015771015314385295,
+      "10.4": 0.0016170925227925181,
+      "10.5": -0.00039076010580174625,
+      "10.6": -0.00027948393835686147,
+      "10.7": -0.0235426165163517,
+      "10.8": -5.992804744892055e-06,
+      "10.9": -0.00010892288264585659,
+      "10.10": -0.00113014061935246,
+      "10.11": 1.4616596672567539e-05,
+      "11.0": 0.00026461886591278017,
+      "11.1": -0.00017501912952866405,
+      "11.2": 0.0006241286755539477,
+      "11.3": 3.244884646846913e-05,
+      "11.4": -0.0013119711074978113,
+      "11.5": -3.6673041904577985e-05,
+      "11.6": -8.65302499732934e-05,
+      "11.7": -0.00034023053012788296,
+      "11.8": 0.007252390030771494,
+      "11.9": -9.187992691295221e-05,
+      "11.10": 0.001399100641719997,
+      "11.11": -0.00024202160420827568
+    },
+    "random_vocab_yy": {
+      "0.0": -0.00020093655621167272,
+      "0.1": -0.0037358650006353855,
+      "0.2": -0.0003654489410109818,
+      "0.3": 0.00023423055245075375,
+      "0.4": 0.00039962289156392217,
+      "0.5": 0.00015180294576566666,
+      "0.6": 0.00027579613379202783,
+      "0.7": 0.0010754707036539912,
+      "0.8": -0.00033962022280320525,
+      "0.9": -0.0003234891628380865,
+      "0.10": 0.0005577107658609748,
+      "0.11": -6.460357690230012e-05,
+      "1.0": 0.00025958241894841194,
+      "1.1": 0.00018653528240974993,
+      "1.2": 7.4660791142378e-05,
+      "1.3": -0.001679462962783873,
+      "1.4": -0.00017733348067849874,
+      "1.5": -0.0016105991089716554,
+      "1.6": -0.0005966542521491647,
+      "1.7": -0.0010349593358114362,
+      "1.8": -0.00014891286264173687,
+      "1.9": 0.000229762532399036,
+      "1.10": -0.000270913791609928,
+      "1.11": 0.0010617439402267337,
+      "2.0": -0.0006709588342346251,
+      "2.1": -0.001781123923137784,
+      "2.2": 0.0008758586482144892,
+      "2.3": 0.0002919014950748533,
+      "2.4": 0.00037495000287890434,
+      "2.5": -0.000757442379835993,
+      "2.6": 0.00036232321872375906,
+      "2.7": 0.00028784555615857244,
+      "2.8": 0.0009132856503129005,
+      "2.9": -0.0009705467382445931,
+      "2.10": -0.0005277122254483402,
+      "2.11": -0.0009743614937178791,
+      "3.0": -0.00014186522457748652,
+      "3.1": 0.0003291219181846827,
+      "3.2": 0.0009634466259740293,
+      "3.3": -0.0015178954927250743,
+      "3.4": 0.0010354529367759824,
+      "3.5": -0.00011337201431160793,
+      "3.6": -0.001039733411744237,
+      "3.7": -0.0034576901234686375,
+      "3.8": 0.0005215903511270881,
+      "3.9": 0.00033108063507825136,
+      "3.10": -0.0019048814428970218,
+      "3.11": 0.00013712808140553534,
+      "4.0": -0.0005342015065252781,
+      "4.1": -0.00142305763438344,
+      "4.2": 0.0002254184801131487,
+      "4.3": -0.000274993188213557,
+      "4.4": -0.0007424190989695489,
+      "4.5": 0.0013373256660997868,
+      "4.6": -0.00206423900090158,
+      "4.7": -0.003223109059035778,
+      "4.8": -0.001283392426557839,
+      "4.9": 0.0006643601227551699,
+      "4.10": 0.0010148639557883143,
+      "4.11": -0.0018751990282908082,
+      "5.0": -0.03645728528499603,
+      "5.1": -0.014429301023483276,
+      "5.2": 0.0005273984279483557,
+      "5.3": 0.00038111655157990754,
+      "5.4": 0.0008023156551644206,
+      "5.5": -0.015178327448666096,
+      "5.6": -0.001525907893665135,
+      "5.7": 0.0009455332765355706,
+      "5.8": 0.002504767617210746,
+      "5.9": 0.003960255067795515,
+      "5.10": -0.00032462485251016915,
+      "5.11": 0.0004083992389496416,
+      "6.0": -0.0008491410408169031,
+      "6.1": -0.011111863888800144,
+      "6.2": -0.00012010586215183139,
+      "6.3": -0.0006521029281429946,
+      "6.4": -0.0031230561435222626,
+      "6.5": 0.0004183670971542597,
+      "6.6": 0.003723535221070051,
+      "6.7": -0.00011799190542660654,
+      "6.8": -0.0022553608287125826,
+      "6.9": -0.037819117307662964,
+      "6.10": -0.0010101312072947621,
+      "6.11": -0.0009255617624148726,
+      "7.0": 0.0013490032870322466,
+      "7.1": -0.0002036825753748417,
+      "7.2": -0.000948103959672153,
+      "7.3": 0.001652709674090147,
+      "7.4": -0.0005313114379532635,
+      "7.5": -0.0028608550783246756,
+      "7.6": 0.005667330697178841,
+      "7.7": -0.0030701803043484688,
+      "7.8": -0.00039510129136033356,
+      "7.9": -0.0001626508019398898,
+      "7.10": -0.00868250709027052,
+      "7.11": -0.017287086695432663,
+      "8.0": 0.0018160294275730848,
+      "8.1": -0.00818414706736803,
+      "8.2": 5.628398866974749e-05,
+      "8.3": -0.00029539907700382173,
+      "8.4": -0.0006531370454467833,
+      "8.5": 0.0004844090435653925,
+      "8.6": -0.024404680356383324,
+      "8.7": -0.008991607464849949,
+      "8.8": -0.01005532220005989,
+      "8.9": 0.0007273232331499457,
+      "8.10": 0.005511622875928879,
+      "8.11": 0.0015206369571387768,
+      "9.0": 0.00040036888094618917,
+      "9.1": 0.0021789332386106253,
+      "9.2": 0.0001660713169258088,
+      "9.3": 0.0012561811599880457,
+      "9.4": -0.0001639975671423599,
+      "9.5": 0.001560110948048532,
+      "9.6": 0.00020363567455206066,
+      "9.7": 0.00011223407636862248,
+      "9.8": -4.976678974344395e-05,
+      "9.9": -8.779234485700727e-05,
+      "9.10": -0.0004590303578879684,
+      "9.11": -0.0005892715998925269,
+      "10.0": -0.0005445211427286267,
+      "10.1": -0.0007647781167179346,
+      "10.2": -0.0021062837913632393,
+      "10.3": -0.00031737619428895414,
+      "10.4": 0.0018517578719183803,
+      "10.5": -0.000352477072738111,
+      "10.6": -4.539258225122467e-05,
+      "10.7": 0.002557791769504547,
+      "10.8": -0.0006343838758766651,
+      "10.9": 0.0008996325777843595,
+      "10.10": -0.00019447742670308799,
+      "10.11": -0.0011254017008468509,
+      "11.0": 0.0009778657695278525,
+      "11.1": -0.00029286189237609506,
+      "11.2": 5.368648999137804e-05,
+      "11.3": -0.0003230413421988487,
+      "11.4": -0.00019511171558406204,
+      "11.5": -0.0002009622403420508,
+      "11.6": 3.706182542373426e-05,
+      "11.7": 3.755318175535649e-05,
+      "11.8": -0.0014603048330172896,
+      "11.9": -0.0005930137704126537,
+      "11.10": 0.0011291505070403218,
+      "11.11": 0.00012352861813269556
+    },
+    "random_vocab_any": {
+      "0.0": 0.0025689606554806232,
+      "0.1": -0.013789001852273941,
+      "0.2": -0.0011393118184059858,
+      "0.3": 0.0023627490736544132,
+      "0.4": -0.0025868152733892202,
+      "0.5": 0.000978138530626893,
+      "0.6": -0.0031235769856721163,
+      "0.7": -0.0015494833933189511,
+      "0.8": -0.005417400971055031,
+      "0.9": 0.01388197485357523,
+      "0.10": -0.006511594168841839,
+      "0.11": -0.0006559527828358114,
+      "1.0": 0.0014986542519181967,
+      "1.1": 0.0032500866800546646,
+      "1.2": 0.001257698517292738,
+      "1.3": 0.0018312953179702163,
+      "1.4": -0.0019302190048620105,
+      "1.5": -0.002081419574096799,
+      "1.6": -0.0019953639712184668,
+      "1.7": 0.002872809302061796,
+      "1.8": -0.001525355619378388,
+      "1.9": 0.0007756263366900384,
+      "1.10": -0.002393310656771064,
+      "1.11": -0.0035811997950077057,
+      "2.0": -0.0024298240896314383,
+      "2.1": 0.004236026667058468,
+      "2.2": 0.003838401520624757,
+      "2.3": 0.005170091520994902,
+      "2.4": -0.0035869902931153774,
+      "2.5": 0.0022327809128910303,
+      "2.6": -0.0026375639718025923,
+      "2.7": -0.0013312076916918159,
+      "2.8": 0.0029139069374650717,
+      "2.9": 0.008608374744653702,
+      "2.10": -0.0016252443892881274,
+      "2.11": 0.0017009250586852431,
+      "3.0": -0.0014696205034852028,
+      "3.1": 0.006322111003100872,
+      "3.2": 0.012955388985574245,
+      "3.3": 0.002666517160832882,
+      "3.4": -0.004572286736220121,
+      "3.5": 0.0025092847645282745,
+      "3.6": 0.004688984714448452,
+      "3.7": 0.010380074381828308,
+      "3.8": -0.003826337633654475,
+      "3.9": 0.004444007761776447,
+      "3.10": -0.012187563814222813,
+      "3.11": -0.0032736514694988728,
+      "4.0": 0.007462548557668924,
+      "4.1": 0.012153222225606441,
+      "4.2": 0.002741393633186817,
+      "4.3": 0.017248759046196938,
+      "4.4": -0.002183640608564019,
+      "4.5": 0.011246742680668831,
+      "4.6": -0.008241230621933937,
+      "4.7": -0.030661046504974365,
+      "4.8": -0.008484357967972755,
+      "4.9": 0.0058221034705638885,
+      "4.10": 0.001007896033115685,
+      "4.11": 0.06129370257258415,
+      "5.0": 0.0015247926348820329,
+      "5.1": 0.009288053028285503,
+      "5.2": 0.011780126951634884,
+      "5.3": 0.016699129715561867,
+      "5.4": -0.008121075108647346,
+      "5.5": 0.007443085312843323,
+      "5.6": 0.0229807049036026,
+      "5.7": 0.007925398647785187,
+      "5.8": 0.009891246445477009,
+      "5.9": 0.0016054597217589617,
+      "5.10": 0.0015785974683240056,
+      "5.11": -0.014478813856840134,
+      "6.0": -0.0023135284427553415,
+      "6.1": -0.0017554537625983357,
+      "6.2": 0.001775721088051796,
+      "6.3": 0.002947283675894141,
+      "6.4": 0.0052271136082708836,
+      "6.5": -0.013211705721914768,
+      "6.6": -0.013092192821204662,
+      "6.7": 0.009749215096235275,
+      "6.8": 0.03372028470039368,
+      "6.9": -0.0064842491410672665,
+      "6.10": -0.0002744127996265888,
+      "6.11": 0.032510194927453995,
+      "7.0": 0.025004539638757706,
+      "7.1": 0.0029763977508991957,
+      "7.2": 0.00013286340981721878,
+      "7.3": 0.00604584813117981,
+      "7.4": -0.002572016790509224,
+      "7.5": -0.0010318629210814834,
+      "7.6": 0.023469051346182823,
+      "7.7": 0.0016098027117550373,
+      "7.8": 0.014816039241850376,
+      "7.9": 0.0016032077837735415,
+      "7.10": 0.000825168623123318,
+      "7.11": -0.0153357507660985,
+      "8.0": -0.0015654076123610139,
+      "8.1": -0.00792580097913742,
+      "8.2": 0.0022111462894827127,
+      "8.3": -0.0010970882140100002,
+      "8.4": 0.0021923265885561705,
+      "8.5": 0.08734546601772308,
+      "8.6": -0.0319463312625885,
+      "8.7": 0.012436321005225182,
+      "8.8": -0.0005253413110040128,
+      "8.9": 0.011086695827543736,
+      "8.10": -0.010496691800653934,
+      "8.11": 0.007399494759738445,
+      "9.0": -0.0023354042787104845,
+      "9.1": 0.04057835042476654,
+      "9.2": 0.0004613223427440971,
+      "9.3": 0.009995639324188232,
+      "9.4": 0.0002988622582051903,
+      "9.5": 0.0033630046527832747,
+      "9.6": -0.003034706460312009,
+      "9.7": 0.0005333838635124266,
+      "9.8": 0.0032130104955285788,
+      "9.9": 0.013539038598537445,
+      "9.10": -0.004393660929054022,
+      "9.11": 0.00014540983829647303,
+      "10.0": -0.0008036145009100437,
+      "10.1": 0.004017268307507038,
+      "10.2": 0.004058285616338253,
+      "10.3": 0.00010503608791623265,
+      "10.4": 0.003611600724980235,
+      "10.5": -0.0003414879320189357,
+      "10.6": 0.001575541333295405,
+      "10.7": -0.005922555457800627,
+      "10.8": -0.00030232054996304214,
+      "10.9": 0.0006425216561183333,
+      "10.10": 0.0036744936369359493,
+      "10.11": -0.0020668625365942717,
+      "11.0": -0.0027113142423331738,
+      "11.1": -0.0004521538212429732,
+      "11.2": 0.0008399669895879924,
+      "11.3": -0.00023757779854349792,
+      "11.4": -0.000464700220618397,
+      "11.5": -0.000832165707834065,
+      "11.6": 0.0008118179393932223,
+      "11.7": -0.0004876215825788677,
+      "11.8": 0.0021372351329773664,
+      "11.9": 0.0007563241524621844,
+      "11.10": 0.00254483288154006,
+      "11.11": -0.0006375352386385202
+    }
+  }
+}

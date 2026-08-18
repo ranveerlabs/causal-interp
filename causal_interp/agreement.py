@@ -103,7 +103,7 @@ class AgreementReport:
     """
 
     channel: str
-    threshold: float
+    threshold: float | Mapping[str, float]
     primary: str
     schemes: tuple[str, ...]
     verdicts: list[HeadVerdict] = field(default_factory=list)
@@ -155,7 +155,8 @@ class AgreementReport:
     def as_dict(self) -> dict:
         return {
             "channel": self.channel,
-            "threshold": self.threshold,
+            "threshold": dict(self.threshold) if not isinstance(self.threshold, float)
+                         else self.threshold,
             "primary": self.primary,
             "schemes": list(self.schemes),
             "flag": self.flag,
@@ -183,7 +184,7 @@ def discovered_set(effects: Mapping[Head, float], threshold: float) -> set[Head]
 def compare_schemes(
     effects_by_scheme: Mapping[str, Mapping[Head, float]],
     *,
-    threshold: float,
+    threshold: float | Mapping[str, float],
     primary: str,
     channel: str,
     spans: Mapping[str, float] | None = None,
@@ -194,6 +195,13 @@ def compare_schemes(
     collapsed to whatever summary the channel uses (for activation patching: the head's
     effect at its own best position). `spans` are the clean-minus-corrupted differences
     used only for the power annotation.
+
+    `threshold` is either one number for every scheme — Phase 8's shared 0.02 — or a
+    **per-scheme** mapping. Phase 9 added the second form: normalized recovery divides
+    by each scheme's own span, so one cutoff does not mean the same thing under two
+    counterfactuals, and a floor calibrated against each scheme's own shuffled-source
+    null is in that scheme's units. Nothing else about the comparison changes, which is
+    what makes the two runs differ in the criterion alone.
 
     Schemes contributing no measurements at all — a path chain that halted, say — are
     kept in the report as empty sets rather than dropped, so a scheme that measured
@@ -208,7 +216,12 @@ def compare_schemes(
             "A single-scheme run cannot report what it cannot see."
         )
 
-    per_scheme = {s: discovered_set(effects_by_scheme[s], threshold) for s in schemes}
+    per_threshold = (
+        {s: float(threshold) for s in schemes}
+        if isinstance(threshold, (int, float))
+        else {s: float(threshold[s]) for s in schemes}
+    )
+    per_scheme = {s: discovered_set(effects_by_scheme[s], per_threshold[s]) for s in schemes}
     union = sorted({h for heads in per_scheme.values() for h in heads})
 
     verdicts: list[HeadVerdict] = []
@@ -246,7 +259,7 @@ def compare_schemes(
 
     return AgreementReport(
         channel=channel,
-        threshold=threshold,
+        threshold=per_threshold,
         primary=primary,
         schemes=schemes,
         verdicts=verdicts,

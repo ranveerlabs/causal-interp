@@ -18,6 +18,7 @@ published circuit happens afterwards, in the phase script, on this module's outp
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Callable, Mapping, Sequence
 
@@ -25,7 +26,14 @@ import torch
 from transformer_lens import HookedTransformer
 
 from causal_interp.agreement import AgreementReport, compare_schemes
-from causal_interp.interventions import Patch, baseline_for, clean_cache_for, run_patched
+from causal_interp.interventions import (
+    Patch,
+    baseline_for,
+    clean_cache_for,
+    derangement,
+    run_patched,
+    sweep_heads_null,
+)
 from causal_interp.metrics import METRICS, DistributionalBaseline, all_metrics
 from causal_interp.schemes import TaskSpec
 
@@ -253,3 +261,107 @@ def agreement_rows(report: AgreementReport, classify: Callable[[Head], str | Non
 
 def as_head_effects(effects: Mapping[Head, float]) -> dict[str, float]:
     return {f"{l}.{h}": v for (l, h), v in effects.items()}
+
+
+# ---------------------------------------------------------------------------
+# Phase 9 — a discovery criterion in each scheme's own units
+# ---------------------------------------------------------------------------
+
+# Phase 3's rule, unchanged: the 99th percentile of a shuffled-source null, rounded up
+# to two significant figures. Phase 9 applies it to activation patching instead of
+# `path_signal`, per scheme, because normalized recovery divides by that scheme's own
+# span and a shared cutoff therefore means different things under different
+# counterfactuals. Fixed in results/PHASE9_PLAN.md before any of it was measured.
+NULL_QUANTILE = 0.99
+SIGNIFICANT_FIGURES = 2
+NULL_SEED = 20260815
+
+
+def round_up_sigfigs(value: float, digits: int = SIGNIFICANT_FIGURES) -> float:
+    """Round up, so a threshold never claims more precision than its null supports."""
+    if value <= 0:
+        return 0.0
+    exponent = math.floor(math.log10(value)) - (digits - 1)
+    step = 10 ** exponent
+    return math.ceil(value / step) * step
+
+
+def null_floor(
+    model: HookedTransformer,
+    task: TaskSpec,
+    scheme: str,
+    *,
+    n: int,
+    seed: int,
+    null_seed: int = NULL_SEED,
+    quantile: float = NULL_QUANTILE,
+    sigfigs: int = SIGNIFICANT_FIGURES,
+    progress: Callable[[int, int], None] | None = None,
+) -> dict:
+    """How much apparent recovery this scheme manufactures from a mismatched activation.
+
+    Runs the head sweep with the spliced clean value drawn from a deranged prompt order
+    and returns the calibrated discovery criterion for this scheme, along with the null
+    distribution behind it so the number can be checked rather than trusted.
+
+    The unit is one (head, position) cell — the unit the sweep measures. The real
+    per-head statistic is a *maximum* over positions, so comparing it against a per-cell
+    null keeps more heads than a like-for-like comparison would; that direction is
+    recorded in the plan and is against this criterion's own hypothesis.
+    """
+    ds = task.dataset(model, n=n, corruption=scheme, seed=seed)
+    baseline, _, _ = baseline_for(model, ds)
+    cache, _ = clean_cache_for(model, ds)
+    permutation = derangement(len(ds), seed=null_seed)
+
+    grid = sweep_heads_null(
+        model, ds, cache, baseline, task.positions, permutation, progress
+    )
+    values = grid.abs().flatten()
+    raw = float(torch.quantile(values.sort().values, quantile))
+    per_head_max = grid.abs().amax(dim=-1)
+
+    return {
+        "scheme": scheme,
+        "threshold": round_up_sigfigs(raw, sigfigs),
+        "raw_quantile": raw,
+        "quantile": quantile,
+        "null_seed": null_seed,
+        "n_cells": int(values.numel()),
+        "null_median": float(values.median()),
+        "null_mean": float(values.mean()),
+        "null_max": float(values.max()),
+        "null_per_head_max_median": float(per_head_max.median()),
+        "span": baseline.span,
+        "grid": grid.tolist(),
+    }
+
+
+def calibrate(
+    model: HookedTransformer,
+    task: TaskSpec,
+    *,
+    n: int,
+    seed: int,
+    null_seed: int = NULL_SEED,
+    progress: Callable[[int, int], None] | None = None,
+    announce: Callable[[str], None] | None = None,
+) -> dict[str, dict]:
+    """`null_floor` for every registered discovery scheme.
+
+    Nothing here consults a real measurement or an answer key: the null sweep never
+    pairs a prompt with its own clean activation, so no result of the actual experiment
+    can reach the threshold that will judge it.
+    """
+    say = announce or (lambda _text: None)
+    floors: dict[str, dict] = {}
+    for scheme in task.discovery_schemes:
+        say(f"  null sweep: {scheme} ")
+        floors[scheme] = null_floor(
+            model, task, scheme, n=n, seed=seed, null_seed=null_seed, progress=progress
+        )
+        block = floors[scheme]
+        say(f"    theta({scheme}) = {block['threshold']:g}"
+            f"   (raw {block['raw_quantile']:.4f}, null median "
+            f"{block['null_median']:.4f}, null max {block['null_max']:.3f})")
+    return floors

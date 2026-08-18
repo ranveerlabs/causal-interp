@@ -1,0 +1,46 @@
+head,published_class,flagged_before,flagged_after,effect_s2_swap,effect_abc,effect_random_vocab_s2,effect_random_vocab_any,over_theta_s2_swap,over_theta_abc,over_theta_random_vocab_s2,over_theta_random_vocab_any
+0.1,duplicate token,True,True,0.014531,-0.069073,0.000748,0.011728,False,True,False,False
+0.3,,True,True,0.003624,0.044191,-0.005181,0.006666,False,True,False,False
+0.4,,True,True,0.000506,0.051179,-0.005943,0.005056,False,True,False,False
+0.5,,True,True,0.000895,0.046940,-0.007253,0.004801,False,True,False,False
+2.8,,True,False,-0.000125,-0.000185,0.000367,0.038824,False,False,False,False
+3.0,duplicate token,False,False,0.118959,-0.002968,0.044108,0.043109,True,False,True,False
+3.4,,False,False,0.023032,0.000460,0.005886,-0.002018,False,False,False,False
+4.0,,True,False,-0.000345,-0.000575,0.002017,0.026736,False,False,False,False
+4.3,,True,True,0.019231,0.005489,0.032196,0.003124,False,False,True,False
+4.6,,True,False,0.001002,-0.000709,0.001025,-0.021103,False,False,False,False
+4.7,,True,False,-0.001322,0.002038,-0.005112,-0.033097,False,False,False,False
+4.11,previous token,True,False,0.000907,0.002824,0.001170,0.033551,False,False,False,False
+5.2,,True,False,0.000631,-0.000356,0.002926,0.035546,False,False,False,False
+5.5,induction,False,False,0.317841,0.001989,0.101734,0.061730,True,False,True,False
+5.7,,True,False,-0.000216,0.000466,0.001365,0.023744,False,False,False,False
+5.9,induction,False,False,0.048641,-0.004708,0.005735,-0.006573,False,False,False,False
+6.0,,False,True,0.026928,0.004116,0.029189,0.010856,False,False,True,False
+6.6,,False,False,-0.022414,0.002314,-0.003897,-0.019363,False,False,False,False
+6.8,,True,False,0.000608,-0.000453,0.000830,0.027102,False,False,False,False
+6.9,induction,False,False,0.091283,0.000334,0.019007,0.011678,True,False,True,False
+7.3,s-inhibition,False,False,0.117119,0.030729,0.086643,0.053788,True,True,True,False
+7.9,s-inhibition,False,False,0.194225,0.043531,0.154862,0.103228,True,True,True,False
+8.2,,False,True,nan,nan,nan,nan,False,False,False,False
+8.6,s-inhibition,False,False,0.268710,-0.014237,0.280324,0.143950,True,True,True,False
+8.10,s-inhibition,False,False,0.253316,0.062820,0.223865,0.100532,True,True,True,False
+9.0,backup name mover,False,True,nan,nan,nan,nan,False,False,False,False
+9.2,,False,True,nan,nan,nan,nan,False,False,False,False
+9.3,,False,True,0.029292,0.003543,0.027586,0.015917,False,False,True,False
+9.4,,False,True,-0.027490,-0.004238,-0.030134,-0.012114,False,False,True,False
+9.5,,False,True,nan,nan,nan,nan,False,False,False,False
+9.6,name mover,False,False,-0.060819,0.292192,-0.111827,0.115418,True,True,True,False
+9.7,backup name mover,False,False,0.098106,0.041342,0.082328,-0.010534,True,True,True,False
+9.8,,True,True,-0.001941,-0.016452,-0.003266,0.027063,False,True,False,False
+9.9,name mover,False,False,0.188914,0.781969,0.150814,0.426963,True,True,True,True
+10.0,name mover,False,False,0.106983,0.185301,0.067194,0.162149,True,True,True,False
+10.1,backup name mover,False,True,0.032977,0.075848,0.019487,0.053007,False,True,True,False
+10.2,backup name mover,True,True,0.013018,0.025203,0.009313,0.033768,False,True,False,False
+10.6,backup name mover,False,False,0.059930,0.091757,0.045216,0.081188,True,True,True,False
+10.7,negative name mover,False,False,-0.484614,-0.511409,-0.381625,-0.562621,True,True,True,True
+10.10,backup name mover,False,True,0.053566,0.134959,0.020832,0.080264,False,True,True,False
+11.2,backup name mover,False,False,-0.107090,-0.114896,-0.111361,-0.078549,True,True,True,False
+11.3,,False,True,nan,nan,nan,nan,False,False,False,False
+11.6,,False,True,nan,nan,nan,nan,False,False,False,False
+11.8,,False,True,nan,nan,nan,nan,False,False,False,False
+11.10,negative name mover,False,False,-0.268884,-0.241144,-0.249901,-0.297073,True,True,True,True
