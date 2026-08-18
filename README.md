@@ -4,7 +4,7 @@ An autonomous system for discovering and **causally validating** computational m
 
 ## Where this stands
 
-Phases 1–5 validated the method against GPT-2 small's IOI circuit, published in Wang et al. (2022), [*Interpretability in the Wild*](https://arxiv.org/abs/2211.00593) — 26 attention heads in 7 classes, so there is a known answer to check against. **Phase 6 ran the same pipeline against a second published circuit** in that model, **Phase 7 ran it against a circuit in a different model**, **Phase 8 changed the method itself** so the pipeline reports what its counterfactual cannot see, and **Phase 9 tried and failed to make that report trustworthy enough to act on**.
+Phases 1–5 validated the method against GPT-2 small's IOI circuit, published in Wang et al. (2022), [*Interpretability in the Wild*](https://arxiv.org/abs/2211.00593) — 26 attention heads in 7 classes, so there is a known answer to check against. **Phase 6 ran the same pipeline against a second published circuit** in that model, **Phase 7 ran it against a circuit in a different model**, **Phase 8 changed the method itself** so the pipeline reports what its counterfactual cannot see, **Phase 9 tried and failed to make that report trustworthy enough to act on**, and **Phase 10 stopped writing the task by hand** and induced one from example prompts instead.
 
 | phase | method | result |
 |---|---|---|
@@ -17,14 +17,15 @@ Phases 1–5 validated the method against GPT-2 small's IOI circuit, published i
 | [7](#phase-7--a-different-model) | **the same pipeline on a different model** | **3/6** — the code transferred with **no existing file changed at all**, and the results are the **worst** of the three circuits. Three of seven pre-registered predictions were wrong |
 | [8](#phase-8--counterfactual-disagreement-as-standard-output) | **several counterfactuals per task, compared automatically** | the pipeline **flags Phase 7's blind spot on its own** — 3/6 → 6/6 on docstring, with the three missed heads named before any answer key is opened. It flags greater-than too, where there was nothing to find |
 | [9](#phase-9--trying-to-tell-a-real-blind-spot-from-noise) | calibrate each counterfactual against its own null | **partial, and the holdout went the wrong way**. Phase 8's shared cutoff is shown indefensible — the ten measured floors span ×400 — but the recalibration is **not a discriminator**: docstring's flag sharpens 18% → 50%, greater-than's stays at 0%, and IOI's *grows* |
+| [10](#phase-10--inducing-the-task-instead-of-writing-it) | **induce the task from 32 example prompts** instead of hand-writing it | **negative as pre-registered — 3/7 against a hand-built 6/7 — and the diagnosis splits in two.** The template, slot vocabularies, positions, counterfactual *content* and metric all mechanize; **choosing which counterfactual to trust does not**, and a 5/7 scheme sat unchosen in the candidate set both times. A post-hoc repair reaches 5/7 and **7/7 at the inherited cutoff**. One of eight predictions held |
 
 Across both definitions of "found", 22 of the 26 published IOI heads have been recovered by something. That figure spans two criteria that disagree about which heads count, and [Phase 3 explains why they are not added together](#why-the-scores-are-not-added-together) — it is not one method's recall.
 
-### What nine phases do and do not demonstrate
+### What ten phases do and do not demonstrate
 
 **Demonstrated.** Given a behaviour to study, this method locates the circuit that implements it, recovers the causal ordering between its parts, and does so without being told where to look. Phase 4 searched for receiver specifications and recovered 16 of the 17 it could score. Phase 5 showed the metric does not need the answer key. **Phase 6 showed none of that was fitted to IOI**, and **Phase 7 showed none of the code was fitted to GPT-2 small** — pointed at a 4-layer attention-only model with a different tokenizer and no MLP blocks, the whole library ran with not one line changed.
 
-**Not demonstrated, and the gap is not incremental.** Nothing here chooses *which behaviour to study*. Every phase takes its task as given and asks how the model implements it; no improvement to patching, searching or scoring turns that into a method for finding behaviours worth studying. The machinery can test a hypothesis and cannot propose one.
+**Not demonstrated, and the gap is not incremental.** Nothing here chooses *which behaviour to study*. Every phase takes its behaviour as given and asks how the model implements it; no improvement to patching, searching or scoring turns that into a method for finding behaviours worth studying. The machinery can test a hypothesis and cannot propose one. **Phase 10 moved the rung below it and not this one**: given a one-sentence hunch and 32 example sentences, most of the task around that hunch can now be built without a person — but the hunch, and the decision of where to cut the prompt, were typed by hand in every run.
 
 **And Phase 7 added a second gap, of a different kind.** Recovery fell to 3 of 6 on a denominator no harder than IOI's, and the reason is that the published counterfactual replaces the answer token, which makes the circuit's *routing* heads causally invisible to a metric read off the output. A different published counterfactual finds 5 of 6. **Which parts of a circuit are discoverable is a property of the experiment, not of the circuit** — and nothing in the pipeline's own output distinguished "the circuit is these three heads" from "this counterfactual can only see three of them". Every diagnosis in that phase was made by consulting the answer key.
 
@@ -32,13 +33,18 @@ Across both definitions of "found", 22 of the 26 published IOI heads have been r
 
 **Phase 9 attacked exactly that gap and did not close it.** Ten candidate signals were measured before any fix was designed; nine of them do not separate the two cases and several separate in the wrong direction. The one rule worth pre-registering — calibrate each scheme against its own shuffled-source null instead of a shared cutoff — is a real improvement to *what counts as a measurement*, and on a third circuit held out for the purpose it made the flag **louder rather than quieter**. The honest conclusion is a ceiling, not a fix: disagreement detection can now also say *this counterfactual was too weak to be believed*, and it still cannot say *therefore the primary is missing part of the circuit*. Every diagnosis of which flags mattered was made by consulting a published head list.
 
+**Phase 10 went after the oldest gap on the list — the one Phase 5 named and declined.** Every task in Phases 1–9 was a hand-written template with hand-written slot vocabularies and a hand-designed counterfactual. Phase 10 replaces that with an induction over 32 example sentences a person typed from a one-sentence hunch: constant token columns become the frame, varying ones become slots, columns that co-vary become one slot appearing twice, the observed values become the vocabulary, and one counterfactual is proposed per slot. It runs through `pipeline.discover()` with **no pre-existing module changed**. Pre-registered, it recovers **3 of the 7** published greater-than heads against the hand-built task's 6 — a negative by its own scoring table — and **the two halves of that failure come apart cleanly.** The counterfactual *content* mechanized: a scheme scoring 5/7 at precision 0.50, acting on exactly the position the published counterfactual acts on, was in the proposed set on both fixtures. The *ranking* did not: the answer-key-free rule picked a 3/7 scheme both times. Separately, two lines in thirty-two that GPT-2 splits as `[" 150", "9"]` rather than `[" 15", "09"]` dissolved a structural constraint and turned the clean condition into a coin flip, **silently**. A post-hoc repair fixes that half — reaching 5/7 size-matched and **7/7 at the inherited cutoff** — and is reported as post-hoc throughout.
+
 **The honest ladder**, from what is still supplied to what is now discovered:
 
 | ingredient | status |
 |---|---|
 | which behaviour to study | **supplied** — no method attempted |
-| task template | **supplied** — explicitly out of scope |
-| corruption content | **supplied** — and Phase 7 shows it decides *which heads exist*, not just how well they score; Phase 8 forces **several** to be supplied and disagree in public |
+| where to cut the prompt | **supplied** — encoded in the human's examples, recovered from nothing (Phase 10) |
+| task template and slot vocabularies | **induced** (Phase 10) — from 32 example sentences, and it costs: 3/7 pre-registered, 5/7 repaired, against a hand-built 6/7 |
+| detecting that the examples disagree with each other | **not achieved** (Phase 10) — two tokenizer-odd lines in thirty-two broke the task and nothing said so; the post-hoc repair turns that into a drop or a refusal |
+| corruption content | **supplied**, and now also **proposable** (Phase 10) — one counterfactual per induced slot, including a re-derivation of Phase 8's authored `xx_mismatch`. Phase 7 shows the content decides *which heads exist*, not just how well they score; Phase 8 forces **several** to be supplied and disagree in public |
+| **which counterfactual to trust** | **not achieved** (Phase 10) — a 5/7 scheme was in the proposed set on both fixtures and the answer-key-free ranking took a 3/7 one both times |
 | corruption position | searchable (Phase 4) |
 | receiver input and position | searchable (Phases 4, 6); **not recovered in Phase 7**, for the same reason |
 | answer key in the metric | **not needed** (Phases 5, 6, 7) |
@@ -48,7 +54,9 @@ Across both definitions of "found", 22 of the 26 published IOI heads have been r
 | **knowing what the experiment cannot see** | **partially surfaced** (Phase 8) — the pipeline flags counterfactual-dependent heads with no answer key |
 | **knowing whether a flag matters** | **not achieved** (Phase 9) — a per-scheme null floor makes the criterion defensible and does **not** separate a real blind spot from ordinary disagreement; flag precision runs 50 % / 0 % / 26 % across three circuits |
 
-The line still sits between the top two rows and the rest. Above it is untouched — a next phase attacking it would need a validation strategy that does not exist here, because a published circuit cannot check task construction when the published task *is* what was supplied. What Phase 7 changed is the row below it: "corruption content is supplied" used to be a statement about *precision*, and is now a statement about *what the method can see at all*. What **Phase 8** changed is the second-to-last row, which did not exist before it: detecting that blindness moved from something a human catches after the fact to something the pipeline prints unprompted. **Phase 9 tried to add the row below it and failed**, which is why that row reads *not achieved* rather than *partial* — the warning the pipeline prints still cannot be graded without the answer key it is supposed to stand in for.
+**The line has moved up by exactly one row, and it is now the first row rather than the second.** Until Phase 10 the top two rows were both untouched and both looked like the same problem. They are not. *Constructing* a task around a stated behaviour turns out to be substantially mechanizable — the template, the vocabularies, the positions, the counterfactual content and the metric all come out of example sentences, and the resulting task locates the whole published circuit at the inherited cutoff once one repair is applied. *Choosing* the behaviour is untouched, and a next phase attacking it would still need a validation strategy that does not exist here, because a published circuit cannot check behaviour selection when the published behaviour *is* what was supplied.
+
+What Phase 10 also did was split one old row into two and add a row nobody had noticed was missing. "Corruption content is supplied" is now half-answered — schemes can be *proposed* from the task's own structure — while **which of the proposed schemes to believe** is a new row reading *not achieved*, and it is the single largest thing standing between this and an unsupervised run. What Phase 7 changed is that "corruption content is supplied" used to be a statement about *precision* and is now a statement about *what the method can see at all*. What **Phase 8** changed is the blind-spot row, which did not exist before it: detecting that blindness moved from something a human catches after the fact to something the pipeline prints unprompted. **Phase 9 tried to add the row below it and failed**, which is why that row reads *not achieved* rather than *partial* — the warning the pipeline prints still cannot be graded without the answer key it is supposed to stand in for.
 
 ## Goal
 
@@ -72,7 +80,7 @@ So every phase so far runs against a small open model with an **already-publishe
 
 > Do the system's conclusions match the published ground truth?
 
-Only once the method demonstrably rediscovers what is already known does it earn the right to be pointed at anything unfamiliar. Five phases have now failed a prediction they made about themselves — Phase 7 failed three of seven, Phase 8 two of eight, Phase 9 four of eight — which is the argument for keeping the answer key in reach a while longer. Phase 7 is also the sharpest evidence for the policy itself: it produced a clean, plausible, internally consistent circuit claim that was **missing half the mechanism**, and only the published head list revealed that.
+Only once the method demonstrably rediscovers what is already known does it earn the right to be pointed at anything unfamiliar. Six phases have now failed a prediction they made about themselves — Phase 7 failed three of seven, Phase 8 two of eight, Phase 9 four of eight, **Phase 10 seven of eight** — which is the argument for keeping the answer key in reach a while longer. Phase 7 is also the sharpest evidence for the policy itself: it produced a clean, plausible, internally consistent circuit claim that was **missing half the mechanism**, and only the published head list revealed that.
 
 ---
 
@@ -432,6 +440,56 @@ IOI is a genuine holdout: Phase 8 registered its four schemes and deliberately n
 
 n = 3: three circuits, two models, one architecture family, and the rule was chosen while looking at two of the three.
 
+## Phase 10 — inducing the task instead of writing it
+
+**Negative as pre-registered, and the failure comes apart into two separable halves.** Full numbers: **[results/PHASE10_REPORT.md](results/PHASE10_REPORT.md)**. Four documents, committed in this order and checkable in git: **[PHASE10_PLAN.md](results/PHASE10_PLAN.md)** with the question, the algorithm in full pseudocode, the scoring table and eight predictions — committed alongside the human input in **[`fixtures/`](fixtures/)** and before any code existed; then **[PHASE10_CHARACTERIZATION.md](results/PHASE10_CHARACTERIZATION.md)**, measuring what that algorithm builds, before any repair was designed; then **[PHASE10_AMENDMENT.md](results/PHASE10_AMENDMENT.md)**, holding one repair and an explicit refusal to let it become the headline; then the runs.
+
+### The question, narrowed on purpose
+
+Phase 5 put task construction out of scope because a weak version "would produce something that looked like progress without being any". This phase does not attempt autonomous task *discovery* either. It attempts the rung below:
+
+> Given a model, a one-sentence hunch, and example prompts written by a person who has only that hunch — how much of the rest of task construction can be mechanized?
+
+The hunch was *this model seems to know that the end of a date range comes after its start*. It produced 64 lines across two sentence frames, committed unfiltered — not checked against the tokenizer, against this repo's word lists, or against whether the model performs the behaviour on them, because that filtering is itself one of the things being mechanized.
+
+### What the induction does
+
+Constant token columns are the frame; varying ones are slots; columns that hold the same token in **every** example are one slot appearing twice; the observed values are the vocabulary; the varying columns are the position vocabulary; one counterfactual is proposed per slot, plus one per tied column. The metric is `clean_argmax_logprob` — the log-probability of whatever the model itself predicted on the clean prompt, which needs no answer key. The primary scheme is chosen by measured output divergence.
+
+All of it reaches `pipeline.discover()` as an ordinary `TaskSpec`. **No pre-existing module was changed**, the same measure Phases 6 and 7 used.
+
+### The headline, and the two halves of it
+
+| | size-matched | at the 0.02 cutoff | precision | is the generated task actually greater-than? |
+|---|---|---|---|---|
+| hand-built (Phase 6) | **6/7** | 7/7 of 9 discovered | 0.78 | by construction |
+| induced, **pre-registered** | **3/7** | 6/7 of 27 | 0.22 | **48 %** |
+| induced, post-hoc repair | 5/7 | **7/7** of 14 | 0.50 | 100 % |
+
+**Half one — the clean condition was not the task.** Two of the thirty-two lines contain a year GPT-2 splits as `[" 150", "9"]` rather than `[" 15", "09"]`. Same row length, so the pre-registered filter keeps them; the tie rule needs unanimity, so the two century columns stop being one slot; generation then samples them independently and produces `The pilgrimage lasted from the year 11245 to the year 14`. The model's top prediction exceeds the start year on 48 % of the clean prompts — a coin flip, which is the published task's own `xx_mismatch` counterfactual served as the control. **Nothing in the pipeline said so.**
+
+**Half two — the ranking chose badly, and this half is not a bug.** `resample_t8`, which redraws the start year and therefore acts on exactly the position the published `yy01` counterfactual acts on, scores **5/7 at precision 0.50** and was sitting in the proposed set. The answer-key-free rule picked a different scheme on both fixtures, each time on larger output divergence. The counterfactual *content* mechanized; the counterfactual *ranking* did not, and this phase does not offer a better rule — writing one after seeing which scheme it should have chosen is fitting to the answer key.
+
+### Two results that ran hard against expectation
+
+**The k-curve is inverted.** Two example prompts recover 6/7 and thirty-two recover 3/7, monotonically. Every additional natural example is another chance to poison a unanimity-based rule. A seven-pair robustness check says it is not a fluke: five of seven contiguous line-pairs reach 5–6/7, and the two that do not are exactly the two containing a tokenizer-odd line — which under the repair **refuse to build** rather than building something broken. The caveat is real: a two-line task generates at most 8 distinct prompts.
+
+**The two sentence frames are indistinguishable.** 3/7 against 3/7 pre-registered, 5/7 against 5/7 repaired. Prediction P8 said the unfamiliar frame would do worse and it did not.
+
+### The repair, and why it is not the headline
+
+One change, fixed in the amendment before it ran: keep the largest group of examples sharing a column **shape** rather than a token **length** — a strict generalization with no threshold in it. It drops exactly the two odd lines, the tie returns, `desync_t7` and `desync_END` are proposed — **Phase 8's authored `xx_mismatch`, re-derived from example sentences with nothing task-specific in the code** — `resample_t7`'s divergence collapses from 0.755 to 0.084 because both centuries now move together, and the rule picks the right scheme on its own.
+
+Section 7 of the plan said a negative result is not retried with a different induction rule. It is not: the headline stays 3/7, and the repair is reported beside it, labelled post-hoc, answering one question only — whether the failure was the mechanism or the bug. All three of its hindsight-informed predictions held, which is what hindsight-informed predictions do.
+
+### Run E — the induction on the other two tasks
+
+Weaker by construction, since these prompts come from hand-built generators. **On docstring — a different model, a different tokenizer, a task this code was never pointed at — the induction finds both tied argument-name slots**, which are the `A_def`/`A_doc` and `B_def`/`B_doc` pairs `docstring.py` hand-codes as separate named positions. **On IOI it fails outright and does not notice**: the eight published templates have different token lengths, the filter keeps the plurality one, and it reports a confident structure over 12 of 32 examples with one slot whose values are a comma and four names.
+
+### What it does not establish
+
+Rediscovery on a published circuit validates task *construction*, never task *invention* — the case that matters for oversight has no published anything, and no version of this experiment covers it. n = 1 circuit, 1 model, 2 frames. And `clean_argmax_logprob` has no guaranteed positive span: it did not bite here, and the known-answer suite contains a synthetic frame where all four induced schemes come out negative.
+
 ---
 
 ## Stack
@@ -487,7 +545,10 @@ Patching is easy to get subtly wrong in ways that still produce reasonable-looki
 python scripts/check_patching.py             # GPT-2 small + IOI      — expect: PATCHING OK
 python scripts/check_patching_docstring.py   # attn-only-4l + docstring — expect: PATCHING OK
 python scripts/check_schemes.py              # Phase 8's registry + Phase 9's null — expect: SCHEMES OK
+python scripts/check_induction.py            # Phase 10's induction and auto-task — expect: INDUCTION OK
 ```
+
+`check_induction.py` runs 46 checks against a synthetic frame — `Then {name} went {place} and {name} slept` — whose right answers are readable off the template string: the repeated slot ties across two columns, an over-long example is dropped and counted, a non-canonical token pair is rejected, every scheme sees a bit-identical clean sample, each counterfactual changes exactly the columns it declares, and `clean_argmax_logprob` equals the model's own clean maximum log-probability per prompt exactly.
 
 The second is Phase 7's counterpart, not a replacement: two of its checks only exist on an attention-only model. With no MLPs, patching every head at every position must reproduce the clean run at the final token *exactly* (it does, to `1e-5`, against `0.05` on GPT-2 small), and patching `hook_mlp_out` must be a silent no-op rather than an error (it is, exactly `0.0` at every layer).
 
@@ -538,6 +599,21 @@ python scripts/run_phase9_calibration.py --circuit ioi            # ~18 min, the
 python scripts/run_phase9_calibration.py --report-only
 ```
 
+Phase 10 induces its task from `fixtures/` rather than importing one. The characterization runs first and on its own, because it is what the amendment was designed against:
+
+```bash
+python scripts/phase10_characterize.py                                      # ~2 min
+python scripts/run_phase10_autotask.py --fixture frame_same --induction plan   # ~4 min, THE HEADLINE
+python scripts/run_phase10_autotask.py --fixture frame_same --induction shape  # ~5 min, post-hoc
+python scripts/run_phase10_autotask.py --fixture frame_own  --induction plan   # ~5 min
+python scripts/run_phase10_autotask.py --fixture frame_own  --induction shape  # ~6 min
+python scripts/run_phase10_autotask.py --stage ksweep                          # ~9 min
+python scripts/run_phase10_autotask.py --stage pairs                           # ~12 min
+python scripts/phase10_report.py
+```
+
+`--induction plan` is the pre-registered algorithm and is what the phase reports; `--induction shape` is the amendment's repair and is labelled post-hoc in every table it appears in. Neither reads a `ground_truth` module before the `ANSWER KEY OPENS HERE` banner, and the runner asserts that `induction.py` and `autotask.py` do not import one at all.
+
 Phase 4 is the longest single sweep — two exhaustive grids, 9,936 forward passes. Phases 4, 5, 6 and 7 all support `--report-only`, which rebuilds their reports from the stored results without repeating the sweep.
 
 Each regenerates its own report, the JSON behind it, and per-head CSVs in `results/`. All runs are seeded, so they reproduce exactly. The phases chain — Phase 2 reads `phase1_results.json`, Phase 3 reads `phase2_results.json`, Phases 6 and 7's later stages read their earlier ones — so run them in order on a clean checkout.
@@ -557,6 +633,8 @@ causal_interp/
   schemes.py         # counterfactual registry — a task cannot register fewer than two
   pipeline.py        # discovery under every registered scheme; no single-scheme path
   agreement.py       # per-head cross-scheme verdicts and the blind-spot flag
+  induction.py       # Phase 10: slots, ties and counterfactuals induced from example prompts
+  autotask.py        # Phase 10: an induced structure wrapped as a TaskSpec the pipeline runs
   comparison.py      # scoring a discovered head set against a ground truth
   metrics.py         # answer-key-free recovery metrics (KL, total variation)
   search.py          # receiver-spec search — must never import a ground_truth module
@@ -568,6 +646,7 @@ scripts/
   check_patching.py       # known-answer tests, GPT-2 small + IOI
   check_patching_docstring.py  # known-answer tests, attn-only-4l + docstring
   check_schemes.py        # known-answer tests, Phase 8's registry and agreement analysis
+  check_induction.py      # known-answer tests, Phase 10's induction and auto-built task
   run_phase1_ioi.py       # Phase 1: activation patching -> results/
   run_phase2_paths.py     # Phase 2: iterative path patching -> results/
   run_phase3_receiver.py  # Phase 3: --preregister fixes the threshold; main run applies it
@@ -585,8 +664,15 @@ scripts/
   phase9_characterize.py      # Phase 9 step 1: the measurement that precedes the fix
   run_phase9_calibration.py   # Phase 9: per-scheme null floors, and the IOI holdout
   phase9_report.py            # Phase 9 report
+  phase10_characterize.py     # Phase 10 step 1: what the pre-registered induction builds
+  run_phase10_autotask.py     # Phase 10: the induced task, the k-sweep, the pair check
+  phase10_report.py           # Phase 10 report
+fixtures/
+  greater_than_frame_same.txt  # 32 hand-written prompts, the published sentence frame
+  greater_than_frame_own.txt   # 32 more, a frame written for Phase 10
+  README.md                    # what counts as human input, and why it is unfiltered
 results/
-  PHASE1_REPORT.md … PHASE9_REPORT.md
+  PHASE1_REPORT.md … PHASE10_REPORT.md
   PHASE4_SEARCH_SPACE.md       # the space and budget, committed before the search code
   PHASE5_AUDIT.md              # what each hand-built piece encodes, committed before the tests
   PHASE6_PLAN.md               # target, ground truth and predictions, committed before the code
@@ -594,18 +680,24 @@ results/
   PHASE8_PLAN.md               # the registry design and the authored scheme, before the code
   PHASE9_CHARACTERIZATION.md   # ten candidate signals, committed before the rule existed
   PHASE9_PLAN.md               # the calibration rule, the scoring table and the holdout
+  PHASE10_PLAN.md              # the induction algorithm in full, committed with the fixtures
+  PHASE10_CHARACTERIZATION.md  # what that algorithm builds, before any repair was designed
+  PHASE10_AMENDMENT.md         # one repair, and the refusal to let it be the headline
   phase3_preregistration.json  # the threshold, committed before the results existed
   phase6_preregistration.json  # the recalibrated threshold, same rule, same ordering
   phase7_preregistration.json  # recalibrated a third time — 0.11, 0.046, 0.03
   phase1_results.json … phase7_results.json
   phase8_docstring.json / phase8_greater_than.json   # per-scheme effects + agreement
   phase9_*.json / phase9_*_calibration.csv           # null floors, before/after verdicts
+  phase10_characterization.json                      # the induction's own output, unscored
+  phase10_<fixture>_<induction>.json / _schemes.csv  # per-fixture runs, both inductions
+  phase10_ksweep.json / phase10_pairs.json           # the k-curve and the pair robustness check
   head_effects_*.csv / component_effects_*.csv / path_effects_*.csv
   receiver_signals.csv / receiver_search_*.csv / phase5_metric_effects.csv
   phase6_*.csv / phase7_*.csv / phase8_*_agreement.csv
 ```
 
-Four separations are deliberate, and each one makes a claim checkable rather than promised. The `ground_truth*` modules hold published circuits as inert data while `comparison.py` scores against whichever it is handed, with pure set arithmetic, so nothing measured in a run can influence what counts as a match. `phase3_analysis.py` is a separate module so the `--preregister` path cannot import it. `search.py` must never import a `ground_truth` module — Phases 4, 6 and 7 assert this at startup, because a search that can see the answer key is not a search. And the three circuits live in **separate** modules rather than one registry, so a run cannot accidentally be scored against their union. Phase 8 extends the second of those: `agreement.py`, `pipeline.py` and `schemes.py` must not import a `ground_truth` module either, because a disagreement flag computed with the answer key in reach would prove nothing about what the pipeline can see on its own.
+Five separations are deliberate, and each one makes a claim checkable rather than promised. The `ground_truth*` modules hold published circuits as inert data while `comparison.py` scores against whichever it is handed, with pure set arithmetic, so nothing measured in a run can influence what counts as a match. `phase3_analysis.py` is a separate module so the `--preregister` path cannot import it. `search.py` must never import a `ground_truth` module — Phases 4, 6 and 7 assert this at startup, because a search that can see the answer key is not a search. And the three circuits live in **separate** modules rather than one registry, so a run cannot accidentally be scored against their union. Phase 8 extends the second of those: `agreement.py`, `pipeline.py` and `schemes.py` must not import a `ground_truth` module either, because a disagreement flag computed with the answer key in reach would prove nothing about what the pipeline can see on its own. **Phase 10 extends it again to `induction.py` and `autotask.py`** — a task *built* with the published circuit in reach would prove nothing about what can be built without one — and adds the fifth separation: the human input lives in `fixtures/` as plain text rather than inside a Python module, so the human contribution to that phase can be counted rather than described.
 
 ## License
 
