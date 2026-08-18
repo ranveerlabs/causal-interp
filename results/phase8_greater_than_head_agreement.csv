@@ -1,0 +1,46 @@
+channel,head,status,found_in,missing_in,published_class,effect_yy01,effect_xx_mismatch,effect_random_vocab_yy,effect_random_vocab_any
+activation patching / logit_diff,0.1,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,,0.030744,0.108739,-0.003736,-0.013789
+activation patching / logit_diff,0.10,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,-0.009430,0.038414,0.000558,-0.006512
+activation patching / logit_diff,1.5,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,-0.002236,0.021994,-0.001611,-0.002081
+activation patching / logit_diff,3.0,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,0.000962,0.039699,-0.000142,-0.001470
+activation patching / logit_diff,3.3,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,0.001849,0.024145,-0.001518,0.002667
+activation patching / logit_diff,4.4,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,-0.003517,0.027832,-0.000742,-0.002184
+activation patching / logit_diff,4.7,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,-0.005120,-0.009823,-0.003223,-0.030661
+activation patching / logit_diff,4.10,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,-0.007147,-0.078930,0.001015,0.001008
+activation patching / logit_diff,4.11,scheme-dependent,xx_mismatch random_vocab_any,yy01 random_vocab_yy,,0.001914,0.044480,-0.001875,0.061294
+activation patching / logit_diff,5.0,scheme-dependent,random_vocab_yy,yy01 xx_mismatch random_vocab_any,,-0.001107,-0.002193,-0.036457,0.001525
+activation patching / logit_diff,5.1,scheme-dependent,yy01,xx_mismatch random_vocab_yy random_vocab_any,year head -> MLP 8,0.055836,0.005057,-0.014429,0.009288
+activation patching / logit_diff,5.5,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,year head -> MLP 8,0.052048,0.153685,-0.015178,0.007443
+activation patching / logit_diff,5.6,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,0.002372,0.006232,-0.001526,0.022981
+activation patching / logit_diff,6.8,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,-0.001228,-0.005764,-0.002255,0.033720
+activation patching / logit_diff,6.9,scheme-dependent,yy01 xx_mismatch random_vocab_yy,random_vocab_any,year head -> MLP 8,0.075923,0.038140,-0.037819,-0.006484
+activation patching / logit_diff,6.11,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,0.002400,-0.002277,-0.000926,0.032510
+activation patching / logit_diff,7.0,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,-0.001263,0.000926,0.001349,0.025005
+activation patching / logit_diff,7.6,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,-0.001557,0.003688,0.005667,0.023469
+activation patching / logit_diff,7.10,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,year head -> MLP 8,0.134557,0.142782,-0.008683,0.000825
+activation patching / logit_diff,8.5,scheme-dependent,xx_mismatch random_vocab_any,yy01 random_vocab_yy,,0.000705,0.039245,0.000484,0.087345
+activation patching / logit_diff,8.6,scheme-dependent,random_vocab_yy random_vocab_any,yy01 xx_mismatch,,-0.004361,-0.006136,-0.024405,-0.031946
+activation patching / logit_diff,8.8,scheme-dependent,yy01,xx_mismatch random_vocab_yy random_vocab_any,year head -> MLP 8,0.029261,-0.008904,-0.010055,-0.000525
+activation patching / logit_diff,8.11,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,year head -> MLP 8,0.082801,0.029301,0.001521,0.007399
+activation patching / logit_diff,9.1,scheme-dependent,yy01 xx_mismatch random_vocab_any,random_vocab_yy,year head -> MLP 9,0.252204,0.067491,0.002179,0.040578
+activation patching / logit_diff,10.7,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,,-0.040144,-0.023543,0.002558,-0.005923
+path chain,0.1,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,,0.036396,0.077604,-0.000622,0.000053
+path chain,0.10,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,-0.009853,0.098025,0.000019,-0.010963
+path chain,1.5,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,-0.005460,0.026847,-0.000579,-0.000929
+path chain,4.4,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,-0.002515,0.024140,-0.000448,0.000444
+path chain,4.10,scheme-dependent,xx_mismatch,yy01 random_vocab_yy random_vocab_any,,-0.003695,-0.082846,-0.000303,0.000347
+path chain,4.11,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,0.000209,-0.000090,-0.000429,0.032048
+path chain,5.0,scheme-dependent,random_vocab_yy,yy01 xx_mismatch random_vocab_any,,-0.001266,0.000880,-0.025768,0.006035
+path chain,5.1,scheme-dependent,yy01,xx_mismatch random_vocab_yy random_vocab_any,year head -> MLP 8,0.061890,0.014096,-0.011850,0.014886
+path chain,5.5,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,year head -> MLP 8,0.071295,0.104527,-0.018664,0.001564
+path chain,6.8,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,0.000765,-0.004268,-0.001428,0.028691
+path chain,6.9,scheme-dependent,yy01 xx_mismatch random_vocab_yy,random_vocab_any,year head -> MLP 8,0.090548,0.035168,-0.035665,-0.001831
+path chain,6.11,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,-0.000138,0.000440,-0.000072,0.031547
+path chain,7.6,scheme-dependent,random_vocab_any,yy01 xx_mismatch random_vocab_yy,,-0.008371,0.002139,0.005298,0.020569
+path chain,7.10,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,year head -> MLP 8,0.163348,0.113552,-0.005703,0.008653
+path chain,8.5,scheme-dependent,xx_mismatch random_vocab_any,yy01 random_vocab_yy,,-0.000688,0.045293,0.000254,0.069298
+path chain,8.6,scheme-dependent,random_vocab_yy random_vocab_any,yy01 xx_mismatch,,-0.000939,-0.005948,-0.022007,-0.028414
+path chain,8.8,scheme-dependent,yy01,xx_mismatch random_vocab_yy random_vocab_any,year head -> MLP 8,0.033099,0.012576,-0.009885,0.002653
+path chain,8.11,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,year head -> MLP 8,0.098299,0.032704,0.001298,0.007071
+path chain,9.1,scheme-dependent,yy01 xx_mismatch random_vocab_any,random_vocab_yy,year head -> MLP 9,0.245612,0.068871,0.002022,0.042319
+path chain,10.7,scheme-dependent,yy01 xx_mismatch,random_vocab_yy random_vocab_any,,-0.038636,-0.022156,0.002493,-0.005641
