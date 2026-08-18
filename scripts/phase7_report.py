@@ -718,21 +718,31 @@ def _diff_against_plan() -> tuple[str, str] | None:
     import subprocess  # noqa: PLC0415
 
     root = RESULTS_DIR.parent
-    try:
-        base = subprocess.run(
-            ["git", "log", "--diff-filter=A", "--format=%H", "--",
-             "results/PHASE7_PLAN.md"],
+
+    def added(path: str) -> str | None:
+        commits = subprocess.run(
+            ["git", "log", "--diff-filter=A", "--format=%H", "--", path],
             cwd=root, capture_output=True, text=True, check=True,
         ).stdout.split()
-        if not base:
+        return commits[-1] if commits else None
+
+    try:
+        base = added("results/PHASE7_PLAN.md")
+        # The far end is the commit that published this phase's results, **not** `HEAD`.
+        # This sentence is a claim about what Phase 7 changed, and a later phase editing a
+        # shared module must not silently rewrite it — Phase 8 registers its counterfactual
+        # schemes in `ioi.py` and `greater_than.py`, and against `HEAD` that would turn this
+        # measurement into a statement about Phase 8.
+        head = added("results/PHASE7_REPORT.md")
+        if not base or not head:
             return None
         out = subprocess.run(
-            ["git", "diff", "--stat", f"{base[-1]}..HEAD", "--", *PRE_EXISTING_MODULES],
+            ["git", "diff", "--stat", f"{base}..{head}", "--", *PRE_EXISTING_MODULES],
             cwd=root, capture_output=True, text=True, check=True,
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
-    return base[-1][:7], out
+    return base[:7], out
 
 
 def _reuse(payload: dict) -> str:
