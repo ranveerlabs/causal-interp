@@ -2,6 +2,11 @@
 
 An autonomous system for discovering and **causally validating** computational mechanisms in neural networks.
 
+> **New here?** [**SYNTHESIS.md**](SYNTHESIS.md) is the entry point — one document covering
+> what ten phases established, what they failed to establish, and why two independent
+> investigations (Phases 9 and 10) hit the same wall from different directions. This README
+> is the full phase-by-phase narrative and the setup instructions.
+
 ## Where this stands
 
 Phases 1–5 validated the method against GPT-2 small's IOI circuit, published in Wang et al. (2022), [*Interpretability in the Wild*](https://arxiv.org/abs/2211.00593) — 26 attention heads in 7 classes, so there is a known answer to check against. **Phase 6 ran the same pipeline against a second published circuit** in that model, **Phase 7 ran it against a circuit in a different model**, **Phase 8 changed the method itself** so the pipeline reports what its counterfactual cannot see, **Phase 9 tried and failed to make that report trustworthy enough to act on**, and **Phase 10 stopped writing the task by hand** and induced one from example prompts instead.
