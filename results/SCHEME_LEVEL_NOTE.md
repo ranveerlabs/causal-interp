@@ -167,3 +167,178 @@ twenty signals is not enough to establish a discriminator, and the honest prior 
 best-looking signal will fail the permutation test.
 
 --- results ---
+
+Produced by `scripts/scheme_level_analysis.py` from committed payloads. Zero model runs.
+Raw output in [`scheme_level_analysis.json`](scheme_level_analysis.json).
+
+## The 13 rows
+
+| circuit | scheme | provenance | Label A (AUC) | Label B (F1) | power | θ | θ ÷ null median |
+|---|---|---|---|---|---|---|---|
+| docstring | `random_random` *(primary)* | published | 0.840 | 0.400 | 1.00 | 0.070 | 139 |
+| docstring | `random_def` | published | 0.859 | 0.435 | 0.40 | 0.120 | 74 |
+| docstring | `random_answer` | published | 0.660 | 0.353 | 1.16 | 0.080 | 161 |
+| docstring | `random_vocab_cdef` | generic | 0.712 | 0.500 | 0.99 | 0.091 | 134 |
+| docstring | `random_vocab_any` | generic | **0.962** | 0.387 | 0.06 | 3.300 | 158 |
+| greater_than | `yy01` *(primary)* | published | 0.998 | 0.875 | 1.00 | 0.019 | 263 |
+| greater_than | `xx_mismatch` | authored | 0.941 | 0.455 | 0.74 | 0.033 | 476 |
+| greater_than | `random_vocab_yy` | generic | 0.932 | 0.200 | 0.61 | 0.013 | 318 |
+| greater_than | `random_vocab_any` | generic | 0.593 | 0.118 | 0.27 | 0.041 | 103 |
+| ioi | `s2_swap` *(primary)* | published | 0.906 | 0.735 | 1.00 | 0.058 | 131 |
+| ioi | `abc` | published | 0.889 | 0.682 | 0.53 | 0.008 | 54 |
+| ioi | `random_vocab_s2` | generic | 0.884 | 0.667 | 0.50 | 0.011 | 22 |
+| ioi | `random_vocab_any` | generic | 0.880 | 0.667 | 0.21 | 0.180 | 94 |
+
+## Verdict: INCONCLUSIVE at n = 13
+
+**No signal cleared the pre-registered bar, under either label.** The pre-registered
+expectation was inconclusive, and it is scored as a **hit**.
+
+### Label A — the primary label. Nothing came close.
+
+Twenty signals, 20,000 permutations, family-wise corrected:
+
+| signal | ρ | family-wise p | within-circuit signs agree |
+|---|---|---|---|
+| `theta_over_own_median` | +0.495 | 0.632 | yes |
+| `s05_max_over_p90` | +0.429 | 0.799 | no |
+| `span` | −0.423 | 0.810 | no |
+| `s01_median_over_threshold` | −0.401 | 0.857 | no |
+| `null_max` | −0.390 | 0.876 | no |
+| … 15 more, all |ρ| ≤ 0.39 | | | |
+
+The number that settles it is in the permutation null, not in the table. **Shuffling the
+labels at random, the best of these twenty signals reaches |ρ| = 0.538 as a matter of
+routine** (median of the max-statistic null) **and 0.764 one time in twenty.** The observed
+best was 0.495 — *below what chance produces half the time*.
+
+```
+|rho| per signal against the permutation null       . = null median 0.538
+                                                    | = null 95th pct 0.764
+theta_over_own_median        0.495 [######################  .         |         ]
+s05_max_over_p90             0.429 [###################     .         |         ]
+span                         0.423 [###################     .         |         ]
+s01_median_over_threshold    0.401 [##################      .         |         ]
+null_max                     0.390 [#################       .         |         ]
+theta_over_null_median       0.390 [#################       .         |         ]
+s10_all_three_metrics        0.340 [###############         .         |         ]
+null_median                  0.335 [###############         .         |         ]
+s02_max_over_median          0.319 [##############          .         |         ]
+s08_median_over_max          0.319 [##############          .         |         ]
+s06_discovered_fraction      0.313 [##############          .         |         ]
+theta                        0.253 [###########             .         |         ]
+null_max_over_median         0.198 [#########               .         |         ]
+s07_n_discovered             0.157 [#######                 .         |         ]
+s03_max_over_primary_max     0.155 [#######                 .         |         ]
+s09_max_effect               0.115 [#####                   .         |         ]
+power                        0.055 [##                      .         |         ]
+spearman_with_primary        0.050 [##                      .         |         ]
+s04_p90_over_median          0.005 [                        .         |         ]
+jaccard_with_primary         0.000 [                        .         |         ]
+```
+
+*(The pre-registration promised a plot. The repository has no plotting dependency and no
+figure in any of ten phases, so it is rendered as a text chart in the same format as every
+other result here. That is the only deviation from what was registered.)*
+
+### Label B — one signal cleared two bars of three, and is not claimed
+
+`s02_max_over_median` — how peaked a scheme's own effect distribution is, its strongest
+head over its median head — reached **ρ = +0.773, family-wise p = 0.041**. That clears the
+significance bar and the |ρ| ≥ 0.7 bar. It **fails the third**, which was fixed in advance
+for exactly this case:
+
+| within-circuit ρ | docstring | greater_than | ioi |
+|---|---|---|---|
+| `s02_max_over_median` vs F1 | **−0.300** | +1.000 | +0.738 |
+
+The correlation reverses on docstring. Under the pre-registered rule that makes it a
+circuit effect wearing a signal's clothes, not a signal, and it is **not declared
+separating**. Two further reasons not to reach for it anyway: Label B was disclosed in
+advance as **not blind**, and it is measured at the shared 0.02 cutoff whose invalidity is
+the established result of Phase 9. `s08_median_over_max` is the same signal inverted and
+carries the identical |ρ| by construction.
+
+### θ is not a partial explanation of the split. It is orthogonal to it.
+
+Step 3 of the brief asked specifically whether the scheme-level form of Phase 9's one
+working signal already partly explains the aim split. Measured, it does not:
+
+| | vs Label A | vs Label B |
+|---|---|---|
+| `theta` | ρ = −0.253 | ρ = −0.248 |
+| `power` | ρ = −0.055 | ρ = +0.207 |
+
+θ and aim are very nearly uncorrelated across the 13 rows, and the reason is visible in one
+row. **Docstring's `random_vocab_any` — power 0.06, θ 3.3, the scheme Phase 9 established as
+pathological and removed from the flag entirely — scores the *second-highest* Label A AUC in
+the whole table, 0.962.** That is not an artefact. It genuinely ranks all six published
+docstring heads at the top of its own list; it also inflates every other head, which is why
+no threshold can be placed on it and why θ correctly kills it.
+
+Those are two different defects. **Ranking quality and scale integrity are separate axes,
+and θ measures only the second.** Phase 9's conclusion that its criterion "separates *this
+scheme is too weak to be believed* from *this scheme measured something*" survives the level
+change intact — and so does its conclusion that this is not the distinction a reader wants.
+
+### Label A itself partly failed, and saying so is part of the result
+
+At the pre-registered cut, **AUC ≥ 0.80 calls 10 of 13 schemes well-aimed**, including the
+docstring row above. Worse, IOI compresses to nothing:
+
+| ioi scheme | AUC |
+|---|---|
+| `s2_swap` | 0.906 |
+| `abc` | 0.889 |
+| `random_vocab_s2` | 0.884 |
+| `random_vocab_any` | 0.880 |
+
+A spread of 0.026 across four schemes that include a uniformly-random-vocabulary
+counterfactual. With 26 published heads among 144, the IOI circuit largely *is* the model's
+high-effect heads, so almost any counterfactual ranks them high. **Four of the thirteen rows
+carry essentially no label variance, so the effective n is smaller than 13 was already.**
+
+### Provenance, reported separately as registered
+
+Not a pipeline-internal signal — it is the experimenter's own label — so it was never
+eligible to be the answer. It also is not one:
+
+| provenance | n | median Label A | median Label B |
+|---|---|---|---|
+| published | 6 | 0.874 | 0.558 |
+| authored | 1 | 0.941 | 0.455 |
+| generic | 6 | 0.882 | 0.444 |
+
+Whether the scheme preserves the answer token makes no difference either (median AUC 0.889
+against 0.882).
+
+## What this establishes, and what it does not
+
+**Establishes.** Moving Phase 9's ten candidate signals from the head level to the scheme
+level does not rescue them. On the primary, threshold-free label the best of twenty signals
+underperforms the median of what random labels produce. The lever SYNTHESIS.md §5 flagged as
+unrun has now been run, and it is not there. Combined with Phase 9's head-level negative and
+Phase 10's counterfactual-selection negative, that is a third statistic on a third object
+failing the same way.
+
+**Does not establish.**
+
+- **This is not evidence that no scheme-level discriminator exists.** It is evidence that
+  none of *these twenty* quantities is one at *this* sample size. At n = 13 against a null
+  whose 95th percentile is 0.764, only a very strong signal could have been detected at all;
+  a real signal of moderate strength would be invisible here and this analysis could not
+  tell the two apart.
+- **The label is contestable, and one row proves it.** `random_vocab_any` scoring 0.962 on
+  docstring says the AUC construction and the project's working notion of "well-aimed" do not
+  agree. A different defensible label could give a different answer, and the note fixed one
+  label in advance rather than searching for the label that made a signal work.
+- **Neither label can see a sub-behaviour.** Stated before the run and still true:
+  `random_def` is aimed at docstring's induction match, not at all six published heads, and
+  no measurement here distinguishes *aimed narrowly* from *badly aimed*.
+- **`s02_max_over_median` is not being banked for later.** It reversed sign on one of three
+  circuits under the non-blind label. It is recorded so that a future analysis with more
+  circuits can check it, not because this one found anything.
+- **n = 13, in strata of 5, 4 and 4, from 3 circuits, 2 models, 1 architecture family.**
+  SYNTHESIS.md §5's fourth point — that the prerequisite may be more published circuits
+  rather than a cleverer statistic — is not weakened by this note. It is what the note ran
+  into.

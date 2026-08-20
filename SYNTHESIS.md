@@ -476,6 +476,17 @@ question and it has never been asked directly.
    experiments, not of heads — and Phase 9 only ever ran its ten candidate signals at the
    **head** level, over 33 flagged heads. The scheme-level version has not been tried.
 
+   > **Since run, and it does not work.**
+   > [`results/SCHEME_LEVEL_NOTE.md`](results/SCHEME_LEVEL_NOTE.md) put all ten signals plus
+   > ten stored scheme-level fields against a threshold-free label over these 13 rows. Under
+   > a family-wise permutation correction the best of the twenty reaches |ρ| = 0.495, where
+   > shuffled labels reach 0.538 half the time. **Inconclusive at n = 13**, and θ turns out
+   > to be orthogonal to aim rather than a partial explanation of it — docstring's
+   > `random_vocab_any`, the scheme θ correctly kills, ranks the published heads second-best
+   > of all thirteen. The note also corrects this paragraph: the labels listed above are not
+   > one rule but three, since `random_vocab_any`'s recall on docstring is 1.000 and its
+   > "badly aimed everywhere" label is really coming from precision.
+
 2. **There are untested candidate signals that are not magnitude.** Two examples, offered
    as illustrations of the *kind* of thing rather than as proposals: whether a
    counterfactual's effect is **consistent across prompts** (a well-aimed intervention
