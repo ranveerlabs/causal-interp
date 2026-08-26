@@ -1,38 +1,4 @@
-"""An induced structure, wrapped as a task the existing pipeline can run — Phase 10.
-
-`induction.py` turns example prompts into slots and proposed counterfactuals. This
-module turns those into the two things the rest of the repository already knows how to
-consume:
-
-- an **`AutoDataset`**, satisfying the dataset contract all three hand-built task
-  modules satisfy — `clean_tokens`, `corrupted_tokens`, `lengths`, `positions`,
-  `logit_diff`, `__len__`;
-- a **`TaskSpec`**, so `pipeline.discover()` sweeps it under every proposed scheme with
-  no change to `pipeline.py`, `interventions.py`, `agreement.py` or `metrics.py`.
-
-That is the whole design goal. Phases 6 and 7 measured their generality by how little
-existing code they had to touch; Phase 10 is built to be measured the same way, and the
-runner prints `git diff --stat` over the pre-existing modules for exactly that reason.
-
-Two pieces here are Phase 10's own proposals rather than transcriptions of existing
-practice, and both are fixed in sections 3.4 and 3.5 of `results/PHASE10_PLAN.md`:
-
-**The primary scheme is chosen by measurement.** Each proposed counterfactual is scored
-by the mean KL divergence between the clean and corrupted next-token distributions, and
-the largest wins. No answer key is involved — only the two runs the counterfactual
-already provides.
-
-**The metric is `clean_argmax_logprob`**: the mean log-probability the model assigns, at
-the final position, to whatever token it *itself* predicted on the clean prompt. Phase 5
-established that a metric needs no answer key to locate a circuit; what it did not
-supply is a scalar for a task that has no hand-written one. This is that scalar. It
-measures restoration of the model's own clean behaviour, which is not the same thing as
-restoration of the correct answer, and the gap between the two is measured once at the
-end against the published task rather than assumed away.
-
-**This module must never import a `ground_truth` module.** The Phase 10 runner asserts
-it, for the reason `search.py` and `agreement.py` carry the same prohibition.
-"""
+"""An induced structure, wrapped as a task the existing pipeline can run, phase 10."""
 
 from __future__ import annotations
 
@@ -58,23 +24,11 @@ from causal_interp.induction import (
 )
 from causal_interp.schemes import Scheme, TaskSpec
 
-# The one generic scheme an induced task registers. `random_vocab_any` needs no anchor
-# and therefore no knowledge of the task at all, which is why it is the one that
-# transfers; `random_vocab_<pivot>` would need to be told where the pivot is, and on an
-# induced task nothing knows that before the primary has been selected.
 GENERIC_SCHEME = "random_vocab_any"
 
 
 class AutoDataset:
-    """A batch of induced clean/corrupted pairs, in the shape the pipeline expects.
-
-    Mirrors `GreaterThanDataset` and `DocstringDataset` field for field. The clean rows
-    are generated once by `build()` and handed in, so every scheme in a multi-scheme
-    sweep sees the *identical* clean sample and only the counterfactual differs —
-    `greater_than.py` arranges the same invariant by hand with a second RNG, and
-    `scripts/check_schemes.py` exists because getting it wrong silently changes what a
-    cross-scheme comparison is comparing.
-    """
+    """a batch of induced clean/corrupted pairs, in the shape the pipeline expects."""
 
     def __init__(
         self,
@@ -123,8 +77,8 @@ class AutoDataset:
             corrupted, changed = apply_proposal(by_name[corruption], structure, self.rows, seed)
             self.corrupted_tokens = torch.tensor(corrupted, device=device)
             self.corrupted_indices = torch.tensor(changed, device=device)
-            # Reported, never filtered: a corrupted row has to stay aligned with the
-            # clean row it is paired with, so it cannot be rejected and redrawn.
+            # reported, never filtered: a corrupted row has to stay aligned with the
+            # clean row it is paired with, so it cant be rejected and redrawn.
             self.corrupted_round_trip = corrupted_round_trip_rate(model, corrupted)
 
         if self.clean_tokens.shape != self.corrupted_tokens.shape:
@@ -142,13 +96,7 @@ class AutoDataset:
     # -- positions ----------------------------------------------------------
 
     def _locate_positions(self, device: str) -> dict[str, Tensor]:
-        """Every induced position, plus END, as a (batch,) index tensor.
-
-        Every generated prompt has the same length by construction, so each index is
-        constant down the batch. The tensor shape is kept anyway, because that is the
-        contract `interventions.py` indexes against and a task that returned a scalar
-        here would work until something batched it.
-        """
+        """Every induced position, plus END, as a (batch,) index tensor."""
         n = len(self.rows)
         out: dict[str, Tensor] = {}
         for label in self.structure.positions:
@@ -162,40 +110,18 @@ class AutoDataset:
     # -- metric -------------------------------------------------------------
 
     def _clean_argmax(self) -> Tensor:
-        """The token the model itself predicts at END on each clean prompt.
-
-        One forward pass at construction. This is the stand-in for the answer key: the
-        induced task has no idea what the *right* continuation is, so it takes the
-        model's own clean continuation as the thing an intervention is trying to
-        restore.
-        """
         with torch.no_grad():
             logits = self.model(self.clean_tokens)
         rows = torch.arange(len(self), device=logits.device)
         return logits[rows, self.positions[END]].argmax(dim=-1)
 
     def logit_diff(self, logits: Tensor, per_prompt: bool = False) -> Tensor:
-        """`clean_argmax_logprob` — mean log p(the clean argmax) at END.
-
-        Named `logit_diff` to satisfy the interface `interventions.py` calls, exactly as
-        `greater_than.py` does for its probability difference. It is neither a logit nor
-        a difference: it is a log-probability, and it is the largest it can be on the
-        clean run by construction, which is what makes the clean-to-corrupted span
-        positive without having to be told what the task is.
-        """
         rows = torch.arange(len(self), device=logits.device)
         log_probs = logits[rows, self.positions[END]].log_softmax(dim=-1)
         values = log_probs[rows, self.target_ids]
         return values if per_prompt else values.mean()
 
     def auto_rank_stats(self, logits: Tensor) -> dict[str, float]:
-        """Does the run still predict what the clean run predicted?
-
-        The counterpart of `year_rank_stats` and `io_rank_stats`, and the only accuracy
-        notion available without an answer key. `agrees_with_clean` is 1.0 on the clean
-        run by definition; its value on the corrupted run is what says whether the
-        counterfactual did anything.
-        """
         rows = torch.arange(len(self), device=logits.device)
         final = logits[rows, self.positions[END]]
         probs = final.softmax(dim=-1)
@@ -205,18 +131,10 @@ class AutoDataset:
         }
 
 
-# ---------------------------------------------------------------------------
 # Building the TaskSpec
-# ---------------------------------------------------------------------------
 
 
 def _kl_at_end(ds: AutoDataset, clean_logits: Tensor, corrupted_logits: Tensor) -> float:
-    """Mean KL(clean || corrupted) over the full next-token distribution at END.
-
-    The selection statistic of section 3.4. Computed here rather than imported from
-    `metrics.py` only because `DistributionalBaseline` bundles it with a normalization
-    this step does not want — the raw divergence is the quantity being ranked.
-    """
     rows = torch.arange(len(ds), device=clean_logits.device)
     end = ds.positions[END]
     log_p = clean_logits[rows, end].log_softmax(dim=-1)
@@ -226,7 +144,7 @@ def _kl_at_end(ds: AutoDataset, clean_logits: Tensor, corrupted_logits: Tensor) 
 
 @dataclass
 class AutoTask:
-    """Everything `build()` produced, so a report can print it without re-deriving it."""
+    """everything `build()` produced, so a report can print it without re-deriving it."""
 
     name: str
     structure: Structure
@@ -269,13 +187,7 @@ def select_primary(
     *,
     seed: int,
 ) -> tuple[str, dict[str, float], dict[str, float], dict[str, dict]]:
-    """Section 3.4: rank the proposed counterfactuals by measured divergence.
-
-    Returns the winner, every candidate's divergence, every candidate's corrupted
-    round-trip rate, and the clean/corrupted agreement statistics — the last three
-    reported rather than used, so the selection rule stays a single argmax with nothing
-    in it to tune.
-    """
+    """Section 3.4: rank the proposed counterfactuals by measured divergence."""
     divergences: dict[str, float] = {}
     round_trip: dict[str, float] = {}
     accuracy: dict[str, dict] = {}
@@ -300,8 +212,8 @@ def select_primary(
             "corrupted": ds.auto_rank_stats(corrupted_logits),
         }
 
-    # argmax, ties broken by lowest anchor column — fixed in the plan so that a tie
-    # cannot be resolved by whichever scheme happens to score better afterwards.
+    # Argmax
+    # cant be resolved by whichever scheme happens to score better afterwards.
     order = {p.name: p.columns[0] for p in proposals}
     primary = min(divergences, key=lambda name: (-divergences[name], order[name]))
     return primary, divergences, round_trip, accuracy
@@ -317,14 +229,7 @@ def build(
     model_alias: str = "gpt2-small",
     filter_mode: str = FILTER_LENGTH,
 ) -> AutoTask:
-    """Induce, generate, propose, select — the whole of section 3, end to end.
-
-    The returned `AutoTask.task` is a `TaskSpec` that `pipeline.discover()` accepts
-    without knowing it was not written by hand.
-
-    `filter_mode` defaults to the pre-registered rule; the amendment's repair has to be
-    named explicitly by the caller.
-    """
+    """induce, generate, propose, select. the whole of section 3, end to end."""
     structure = induce(model, examples, filter_mode=filter_mode)
     generated = generate(model, structure, n=n, seed=seed)
     if generated.count < 2:
@@ -341,14 +246,10 @@ def build(
     schemes: dict[str, Scheme] = {
         p.name: Scheme(
             name=p.name,
-            # `authored`, not `generic`: these encode no knowledge of what the task
-            # means, but they do encode the human's examples, and Phase 8's provenance
-            # field exists precisely so that distinction is not quietly lost.
+
             provenance="authored",
             breaks=p.breaks,
-            # Not knowable without the answer key. Declared False for every induced
-            # scheme and reported as unavailable — a real loss against Phase 8's
-            # registry, recorded rather than papered over.
+
             preserves_answer=False,
             primary=(p.name == primary),
         )

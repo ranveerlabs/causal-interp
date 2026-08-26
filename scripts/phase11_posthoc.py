@@ -1,24 +1,4 @@
-"""Phase 11 post-hoc diagnostics — run after the registered tests, and marked as such.
-
-    python scripts/phase11_posthoc.py
-
-**Nothing here can change a Phase 11 verdict.** `results/PHASE11_PLAN.md` froze P1, P2,
-P3 and the nine predictions, `scripts/phase11_analysis.py` computed them, and
-`results/phase11_tests.json` records the answers. This file adds two things that were
-not registered and are reported as post-hoc throughout:
-
-1. **The magnitude comparator for P3.** The plan named exactly one statistic for P3 and
-   named it in advance, which is correct pre-registration and leaves an obvious question
-   unanswered: how does plain magnitude do on the identical 17 heads? Reporting P3 as a
-   pass without that number would be misleading, so it is computed here and labelled.
-
-2. **The mechanism behind P1's negative.** Whether replication noise scales with effect
-   size. If it does, dividing by it penalises exactly the heads with real effects, which
-   would explain why every stability statistic came in *below* magnitude rather than
-   merely level with it.
-
-Neither is a discriminator candidate and neither is eligible to be the phase's result.
-"""
+"""Phase 11 post-hoc diagnostics, run after the registered tests, and marked as such."""
 
 from __future__ import annotations
 
@@ -37,7 +17,7 @@ _spec.loader.exec_module(_a)
 
 
 def p3_comparators(blind: dict, tests: dict) -> dict:
-    """Every ranking of the same 17 flagged heads, so P3's pass can be read in context."""
+    """every ranking of the same 17 flagged heads, so P3's pass can be read in context."""
     p3 = tests["p3_flagged"]
     flagged, positives, star = p3["flagged"], set(p3["positives"]), p3["best_other_scheme"]
     heads = blind["circuits"]["docstring"]["heads"]
@@ -64,7 +44,7 @@ def p3_comparators(blind: dict, tests: dict) -> dict:
 
 
 def noise_scaling(blind: dict) -> dict:
-    """Does replication sd grow with the size of the effect it is measuring?"""
+    """does replication sd grow with the size of the effect it is measuring?"""
     out = {}
     for circuit in _a.CIRCUITS:
         published = _a.published_heads(circuit)

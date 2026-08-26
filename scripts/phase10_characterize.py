@@ -1,18 +1,4 @@
-"""Phase 10 step 1: run the pre-registered induction and measure what it produces.
-
-    python scripts/phase10_characterize.py        # ~2 min, one GPU pass per scheme
-
-Phase 9 established the ordering this script follows: measure first, in its own commit,
-before anything is designed on top of the measurement. What runs here is section 3 of
-`results/PHASE10_PLAN.md` exactly as committed — no repair, no tuning, no filtering of
-the human's fixture — applied to the two fixtures the plan fixed, plus the two
-cross-task induction checks the plan lists as run E.
-
-It writes `results/phase10_characterization.json` and
-`results/PHASE10_CHARACTERIZATION.md`. It opens no answer key and scores nothing: the
-question here is only what the induction says about the prompts it was handed, and
-whether the task it builds is one the pipeline could run at all.
-"""
+"""Phase 10 step 1: run the pre-registered induction and measure what it produces."""
 
 from __future__ import annotations
 
@@ -45,24 +31,12 @@ def read_fixture(path: Path) -> list[str]:
 
 
 def shape_signature(row: tuple[int, ...]) -> tuple[int, ...]:
-    """Each column replaced by the first column holding the same token.
-
-    A row's *shape*: which of its positions repeat each other, ignoring what the tokens
-    actually are. Two examples of the same template have the same shape; an example the
-    tokenizer split differently does not. Measured here as a diagnostic only — no rule
-    in `PHASE10_PLAN.md` consults it, and this script designs nothing.
-    """
     first: dict[int, int] = {}
     return tuple(first.setdefault(token, column) for column, token in enumerate(row))
 
 
 def diagnose_shapes(model, examples: list[str]) -> dict:
-    """How many of the human's lines agree on a column-repetition pattern?
-
-    The induction ties two columns only when they agree in *every* kept example, so a
-    single line the tokenizer split unusually is enough to dissolve a tie that the other
-    thirty-one support. This measures how close to unanimous the fixtures actually are.
-    """
+    """how many of the human's lines agree on a column-repetition pattern?"""
     rows = [induction._tokenize(model, text) for text in examples]
     groups: dict[tuple, list[int]] = {}
     for index, row in enumerate(rows):
@@ -77,7 +51,7 @@ def diagnose_shapes(model, examples: list[str]) -> dict:
 
 
 def describe_fixture(model, name: str, examples: list[str]) -> dict:
-    """Induce, generate, propose and measure — everything short of a head sweep."""
+    """Induce, generate, propose and measure, everything short of a head sweep."""
     print(f"\n{'=' * 72}\n{name}  ({len(examples)} lines)\n{'=' * 72}")
     decode = lambda t: model.to_string([t])  # noqa: E731
 
@@ -114,9 +88,6 @@ def describe_fixture(model, name: str, examples: list[str]) -> dict:
     proposals = induction.propose(structure)
     print(f"  proposed schemes     {[p.name for p in proposals]}")
 
-    # Per-scheme measurement. The divergence is the plan's selection statistic; the span
-    # is what every normalized number downstream divides by, and it is measured here
-    # because the known-answer suite showed it is not guaranteed positive.
     per_scheme: dict[str, dict] = {}
     names = [p.name for p in proposals] + [autotask.GENERIC_SCHEME]
     for scheme in names:
@@ -171,14 +142,8 @@ def describe_fixture(model, name: str, examples: list[str]) -> dict:
 
 
 def cross_task(model, label: str, prompts: list[str], hand_built: tuple[str, ...]) -> dict:
-    """Run E: induction on prompts drawn from a hand-built generator.
-
-    Weaker than the fixture cases by construction, and labelled so everywhere it
-    appears: these prompts come out of a task module that already solved the problem
-    the induction is being asked to solve. The only question is whether the induced
-    slot structure matches what that module hand-codes.
-    """
-    print(f"\n{'=' * 72}\ncross-task induction: {label}   (weaker — prompts from a hand-built generator)\n{'=' * 72}")
+    """run E: induction on prompts drawn from a hand-built generator."""
+    print(f"\n{'=' * 72}\ncross-task induction: {label}   (weaker, prompts from a hand-built generator)\n{'=' * 72}")
     try:
         structure = induction.induce(model, prompts)
     except ValueError as exc:
@@ -216,7 +181,7 @@ def main() -> int:
     for name, path in FIXTURE_FILES.items():
         out["fixtures"][name] = describe_fixture(model, name, read_fixture(path))
 
-    # Run E, case 1: IOI, whose eight templates have different token lengths.
+    # run E, case 1: IOI, whose eight templates have different token lengths.
     from causal_interp.ioi import POSITIONS as IOI_POSITIONS
     from causal_interp.ioi import IOIDataset
 
@@ -225,8 +190,8 @@ def main() -> int:
         model, "IOI (all 8 templates)", [p.clean for p in ioi.prompts], IOI_POSITIONS
     )
 
-    # And the same task restricted to one template, which is the condition the induction
-    # actually requires. Reported side by side so the failure above is attributable.
+    # and the same task restricted to one template
+    # actually requires
     from causal_interp.ioi import TEMPLATES
 
     ioi_one = IOIDataset(model, n=32, seed=SEED, templates=(TEMPLATES[0],))
@@ -234,7 +199,7 @@ def main() -> int:
         model, "IOI (one template)", [p.clean for p in ioi_one.prompts], IOI_POSITIONS
     )
 
-    # Run E, case 2: docstring, on its own model.
+    # run E, case 2: docstring, on its own model.
     print("\nloading attn-only-4l ...")
     small = load("attn-only-4l")
     from causal_interp.docstring import POSITIONS as DOC_POSITIONS

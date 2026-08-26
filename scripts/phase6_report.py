@@ -1,13 +1,4 @@
-"""Phase 6 report: how the unmodified pipeline did on a circuit it was not built around.
-
-Kept out of the run module for the same reason `phase4_report.py` is: the report
-consults the answer key freely, and the search must not.
-
-The report is generated from the stored payload rather than written by hand, so a
-number in the prose cannot drift away from the number in the JSON. Where a
-sentence depends on which way a result went, it branches on the measured value
-instead of asserting a direction.
-"""
+"""Phase 6 report: how the unmodified pipeline did on a circuit it wasnt built around."""
 
 from __future__ import annotations
 
@@ -19,13 +10,10 @@ from causal_interp import ground_truth_greater_than as gt
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
 
-# The IOI side of every comparison is read from the committed results of the
-# earlier phases rather than transcribed, so the two halves of a table cannot
-# disagree with the files they came from.
 PHASE5_JSON = RESULTS_DIR / "phase5_results.json"
 PHASE1_JSON = RESULTS_DIR / "phase1_results.json"
 
-# Which IOI corruption plays the same role as each greater-than one.
+# which IOI corruption plays the same role as each greater-than one.
 CORRUPTION_ANALOGUE = {
     "yy01": ("s2_swap", "the task's published counterfactual"),
     "random_vocab_yy": ("random_vocab_s2", "generic substitution at the task's pivot"),
@@ -55,36 +43,33 @@ def _pct(x: float) -> str:
     return f"{x:.0%}"
 
 
-# ---------------------------------------------------------------------------
-
-
 def _header(payload: dict) -> str:
     meta = payload["meta"]
     sweep_meta = payload["sweep"]["meta"]
-    return f"""# Phase 6 — the same pipeline, a second published circuit
+    return f"""# Phase 6, the same pipeline, a second published circuit
 
-**Target**: the greater-than circuit in GPT-2 small, from Hanna, Liu, Variengien
+**target**: the greater-than circuit in GPT-2 small, from Hanna, Liu, Variengien
 (2023), [*How does GPT-2 compute greater-than?*](https://arxiv.org/abs/2305.00586).
-Published ground truth: **{gt.PUBLISHED_HEAD_COUNT} attention heads** in
+published ground truth: **{gt.PUBLISHED_HEAD_COUNT} attention heads** in
 {len(gt.CIRCUIT)} classes, plus MLPs {", ".join(str(m) for m in gt.PUBLISHED_MLPS)}.
 
 The target, the ground truth, the scoring rules and four predictions were fixed in
-[PHASE6_PLAN.md](PHASE6_PLAN.md), committed before any Phase 6 code existed.
+[PHASE6_PLAN.md](PHASE6_PLAN.md), committed before any phase 6 code existed.
 
 | | |
 |---|---|
 | model | `{meta['model']}` |
 | prompts | {meta['prompts']} per corruption scheme, seed {meta['seed']} |
-| activation-patching cutoff | {meta['headline_threshold']} — **inherited from Phase 1** |
-| size-matched set | top {gt.PUBLISHED_HEAD_COUNT} — the published head count |
-| receiver-side threshold | {meta['signal_threshold']} — **Phase 3's rule, recalibrated null** |
+| activation-patching cutoff | {meta['headline_threshold']}, **inherited from phase 1** |
+| size-matched set | top {gt.PUBLISHED_HEAD_COUNT}, the published head count |
+| receiver-side threshold | {meta['signal_threshold']}, **phase 3's rule, recalibrated null** |
 | GPU | {meta['gpu']} |
 | runtime | {sweep_meta['runtime_seconds']:.0f}s sweep + {meta['runtime_seconds']:.0f}s search |
 
-Every cutoff, chain width, confirmation depth and ambiguity margin was inherited
+every cutoff, chain width, confirmation depth and ambiguity margin was inherited
 verbatim from the phase that introduced it. The only number recomputed is the
 receiver-side threshold, whose rule is unchanged and whose value must be
-recalibrated because the null is task-specific — the plan fixed that in advance.
+recalibrated cuz the null is task-specific, the plan fixed that in advance.
 """
 
 
@@ -124,7 +109,7 @@ def _headline(payload: dict) -> str:
         )
 
     return f"""
-## Headline
+# headline
 
 {_table(rows, ["method", "recovered", "precision"])}
 {ioi_line}"""
@@ -137,17 +122,17 @@ def _predictions(payload: dict) -> str:
     zeros = primary["exact_zeros"]
     hand = primary["metrics"]["logit_diff"]
 
-    # 1 — structural blindness before YY
+    # 1, structural blindness before YYYY
     pre_yy = ["NOUN", "XX1"]
     blind_ok = all(zeros[p][0] == zeros[p][1] for p in pre_yy)
     blind_detail = ", ".join(f"`{p}` {zeros[p][0]}/{zeros[p][1]}" for p in pre_yy)
     at_yy = zeros["YY"]
 
-    # 2 — activation patching recovers >= 5 of 7
+    # 2, activation patching recovers >= 5 of 7 7
     matched = len(hand["headline"]["matches"])
     pred2_ok = matched >= 5
 
-    # 3 — precision worse than IOI's
+    # 3, precision worse than IOI's's
     ioi1 = _load(PHASE1_JSON)
     ioi_precision = None
     if ioi1:
@@ -155,21 +140,19 @@ def _predictions(payload: dict) -> str:
             if "schemes" in ioi1 else None
     precision = hand["headline"]["precision"]
     if ioi_precision is None:
-        pred3 = f"precision {precision:.2f}; IOI's Phase 1 figure could not be read back"
+        pred3 = f"precision {precision:.2f}. iOI's phase 1 figure couldnt be read back"
         pred3_ok = None
     else:
         pred3_ok = precision < ioi_precision
         gap = abs(precision - ioi_precision)
         pred3 = (f"precision {precision:.3f} against IOI's {ioi_precision:.3f} "
                  f"under the same cutoff")
-        # A verdict that turns on a gap this small is not a confirmation of
-        # anything, and saying so is the point. The threshold below is applied to
-        # the *wording* of a prediction, never to a measurement.
-        if gap < 0.05:
-            pred3 += (f" — a gap of {gap:.3f}, which is a tie, not a confirmation. "
-                      f"Read as: precision did **not** degrade")
 
-    # 4 — fully generic degrades
+        if gap < 0.05:
+            pred3 += (f", a gap of {gap:.3f}, which is a tie, not a confirmation. "
+                      f"read as: precision did **not** degrade")
+
+    # 4, fully generic degradeses
     generic = sweep["corruptions"]["random_vocab_any"]["metrics"]["kl"]
     generic_matched = len(generic["headline"]["matches"])
     generic_sized = len(generic["size_matched"]["matches"])
@@ -177,17 +160,17 @@ def _predictions(payload: dict) -> str:
     pred4_ok = generic_sized < hand_sized
 
     def mark(ok: bool | None) -> str:
-        return "✅ held" if ok else ("✗ **wrong**" if ok is False else "◐ **tie — not confirmed**")
+        return "✅ held" if ok else ("✗ **wrong**" if ok is False else "◐ **tie, not confirmed**")
 
-    # A prediction that "wins" by 0.005 has not been confirmed by anything, and
-    # marking it ✅ would be claiming evidence that is not there.
+    # a prediction that "wins" by 0.005 hasnt been confirmed by anything, and
+    # Marking it ✅ would be claiming evidence that isnt there.e.
     pred3_mark = pred3_ok
     if pred3_ok is not None and abs(precision - ioi_precision) < 0.05:
         pred3_mark = None
 
     rows = [
         ["1. blindness before `YY` reappears", mark(blind_ok),
-         f"exact zeros at {blind_detail}; at `YY` itself {at_yy[0]}/{at_yy[1]}"],
+         f"exact zeros at {blind_detail}. at `YY` itself {at_yy[0]}/{at_yy[1]}"],
         [f"2. activation patching recovers ≥ 5 of {gt.PUBLISHED_HEAD_COUNT}", mark(pred2_ok),
          f"recovered {matched}/{gt.PUBLISHED_HEAD_COUNT}"],
         ["3. precision worse than IOI's", mark(pred3_mark), pred3],
@@ -198,7 +181,7 @@ def _predictions(payload: dict) -> str:
     ]
 
     return f"""
-## The four predictions, scored
+# The four predictions, scored
 
 Fixed in [PHASE6_PLAN.md](PHASE6_PLAN.md) before the run.
 
@@ -216,7 +199,7 @@ def _activation_patching(payload: dict) -> str:
         for name, entry in block["metrics"].items():
             sized = len(entry["size_matched"]["matches"])
             cell = f"{sized}/{gt.PUBLISHED_HEAD_COUNT}"
-            ioi_cell = "—"
+            ioi_cell = ", "
             if ioi5 and analogue in ioi5["corruptions"]:
                 ioi_sized = ioi5["corruptions"][analogue]["metrics"][name]["size_matched"]
                 ioi_cell = f"{ioi_sized}/{ioi_gt.PUBLISHED_HEAD_COUNT}"
@@ -238,18 +221,18 @@ def _activation_patching(payload: dict) -> str:
     ]
 
     return f"""
-## Activation patching, every corruption against every metric
+# Activation patching, every corruption against every metric
 
-The Phase 5 grid, rerun on this task. One forward pass yields all three metrics, so
-any difference between them is the metric and not the run. **Size-matched** is the
-top {gt.PUBLISHED_HEAD_COUNT} heads by absolute effect — no free parameter, so it
-cannot be tuned; the IOI column beside it is the same measurement from Phase 5,
+the phase 5 grid, rerun on this task. one forward pass yields all three metrics, so
+any difference between them is the metric and not the run. **size-matched** is the
+top {gt.PUBLISHED_HEAD_COUNT} heads by absolute effect, no free parameter, so it
+cant be tuned. the IOI column beside it is the same measurement from phase 5,
 size-matched to that circuit's 26.
 
 {_table(rows, ["corruption", "metric", f"size-matched", f"at {payload['meta']['headline_threshold']}",
-               "precision", "discovered", "IOI (Phase 5)"])}
+               "precision", "discovered", "IOI (phase 5)"])}
 
-The counterfactuals themselves:
+the counterfactuals themselves:
 
 {_table(baseline_rows, ["corruption", "what it supplies", "clean", "corrupted", "span",
                         "corrupted still valid"])}
@@ -257,7 +240,7 @@ The counterfactuals themselves:
 
 
 def _mlps(payload: dict) -> str:
-    """The published circuit's centre is its MLPs, so report them rather than omit them."""
+    """the published circuit's centre is its MLPs, so report them rather than omit them."""
     block = payload["sweep"]["corruptions"]["yy01"]
     mlp = block["components"]["mlp_out"]
     from causal_interp.greater_than import POSITIONS
@@ -267,7 +250,7 @@ def _mlps(payload: dict) -> str:
         best = max(range(len(per_pos)), key=lambda p: abs(per_pos[p]))
         rows.append([
             f"MLP {layer}",
-            "**published**" if layer in gt.PUBLISHED_MLPS else "",
+            "published" if layer in gt.PUBLISHED_MLPS else "",
             f"{per_pos[best]:+.3f}",
             f"`{POSITIONS[best]}`",
         ])
@@ -277,27 +260,27 @@ def _mlps(payload: dict) -> str:
     hit = len(set(top4) & set(gt.PUBLISHED_MLPS))
 
     return f"""
-## The MLPs — the part of this circuit a head count cannot describe
+# the MLPs, the part of this circuit a head count cant describe
 
 IOI's published circuit is 26 attention heads and no MLPs. This one is
 {gt.PUBLISHED_HEAD_COUNT} heads and **four MLPs**, and the paper puts the MLPs at
 the centre: "MLPs 9, 10, and 11 appear to compute the greater-than operation in
-tandem, and in steps". Reporting only a head count would omit the published claim
+tandem, and in steps". reporting only a head count would omit the published claim
 this circuit mostly consists of.
 
-`sweep_component` already existed — Phase 1 used it to localize depth before
-attributing effect to heads — and it needed no change to answer this.
+`sweep_component` already existed, phase 1 used it to localize depth before
+attributing effect to heads, and it needed no change to answer this.
 
 {_table(rows, ["component", "published?", "largest effect", "at position"])}
 
-**{hit} of the top 4 MLPs by absolute effect are published circuit members**
+{hit} of the top 4 MLPs by absolute effect are published circuit members
 ({", ".join(f"MLP {l}" for l in sorted(top4))} recovered against a published
 {", ".join(f"MLP {m}" for m in gt.PUBLISHED_MLPS)}).
 
-The fourth is **MLP 0**, and it is not a false positive so much as a different
-kind of object. Its effect is the largest of any component here and it sits at
-`YY`, not `END` — the paper looks for what MLP 0 depends on and finds nothing
-upstream of it, concluding "it depends primarily on the token embeddings". An
+the fourth is **MLP 0**, and it isnt a false positive so much as a different
+kind of object. its effect is the largest of any component here and it sits at
+`YY`, not `END`, the paper looks for what MLP 0 depends on and finds nothing
+upstream of it, concluding "it depends primarily on the token embeddings". an
 MLP 0 that behaves as an extended embedding of the year token *should* dominate a
 patch at the year position, and reading that as a discovered circuit component
 would be a mistake the published account already warns against.
@@ -312,37 +295,37 @@ def _path_chain(payload: dict) -> str:
     rows = []
     for entry in chain["rounds"]:
         if entry.get("halted"):
-            rows.append([str(entry["index"]), entry["question"], "*chain halted*", "—"])
+            rows.append([str(entry["index"]), entry["question"], "*chain halted*", ", "])
             continue
         effects = {k: v for k, v in entry["effects"].items()}
         ranked = sorted(effects, key=lambda k: abs(effects[k]), reverse=True)[:4]
         top = ", ".join(f"`{h}` {effects[h]:+.3f}" for h in ranked)
         classes = {gt.classify(tuple(map(int, h.split(".")))) for h in ranked}
-        label = ", ".join(sorted(c for c in classes if c)) or "—"
+        label = ", ".join(sorted(c for c in classes if c)) or "n/a"
         if any(tuple(map(int, h.split("."))) in gt.APPENDIX_UPSTREAM_HEADS for h in ranked):
-            label = (label + ", " if label != "—" else "") + "appendix upstream"
+            label = (label + ", " if label != "n/a" else "") + "appendix upstream"
         rows.append([str(entry["index"]), entry["question"], top, label])
 
     cmp = chain["comparison"]
     return f"""
-## Path patching — the chain, and what it found on its own
+# path patching, the chain, and what it found on its own
 
-Phase 2's iterative chain. Each round's receivers are the heads discovered in the
-round before; the answer key is never consulted to choose them. The receiver input
-and position come from the paper's account of the mechanism, exactly as Phase 2's
-came from the IOI paper's — this is guided rediscovery, and *which* heads turn up
-is not constrained.
+phase 2's iterative chain. each round's receivers are the heads discovered in the
+round before. the answer key is never consulted to choose them. the receiver input
+and position come from the paper's account of the mechanism, exactly as phase 2's
+came from the IOI paper's, this is guided rediscovery, and *which* heads turn up
+isnt constrained.
 
 {_table(rows, ["round", "question", "top senders", "published class"])}
 
-Union across rounds: **{len(cmp['matches'])}/{gt.PUBLISHED_HEAD_COUNT}**,
+union across rounds: **{len(cmp['matches'])}/{gt.PUBLISHED_HEAD_COUNT}**,
 precision {cmp['precision']:.2f}.
 
-Round 1 asked which heads feed the round-0 heads' values at `YY` — the receiver
-spec the paper states for all seven circuit heads. What it returned is the set the
-paper's **Appendix B** names as those heads' upstream dependencies
+round 1 asked which heads feed the round-0 heads' values at `YY`, the receiver
+spec the paper states for all seven circuit heads. what it returned is the set the
+paper's **appendix B** names as those heads' upstream dependencies
 ({", ".join(f"`{l}.{h}`" for l, h in gt.APPENDIX_UPSTREAM_HEADS)}), which the plan
-recorded in advance as the secondary comparison and which the chain was not told
+recorded in advance as the secondary comparison and which the chain wasnt told
 about.
 """
 
@@ -355,13 +338,9 @@ def _receiver_side(payload: dict) -> str:
     rows = [[
         g["label"], g["position"], str(len(g["receivers"])),
         str(len(g["signals"])), str(len(g["cleared"])),
-        ", ".join(f"`{h}`" for h in g["cleared"][:6]) or "—",
+        ", ".join(f"`{h}`" for h in g["cleared"][:6]) or "n/a",
     ] for g in rs["groups"]]
 
-    # A sender must sit strictly below its receiver, so most of the published
-    # circuit was never eligible to be scored here at all. Reporting 0/7 without
-    # that distinction would present "out of scope" as "measured and failed" —
-    # the same error Phase 3 was careful to avoid for 9.0 and 11.9.
     ceilings = [
         min(int(r.split(".")[0]) for r in g["receivers"]) for g in rs["groups"]
     ]
@@ -373,53 +352,53 @@ def _receiver_side(payload: dict) -> str:
     ext_hits = sorted(discovered & set(gt.APPENDIX_UPSTREAM_HEADS))
 
     scope_note = f"""
-### 0 of 7 — but only {len(eligible)} of the 7 were ever in scope
+# 0 of 7, but only {len(eligible)} of the 7 were ever in scope
 
-A sender must sit strictly below its receiver. The chain's only surviving receiver
+a sender must sit strictly below its receiver. the chain's only surviving receiver
 group sits at layers {ceiling}+, so of the {gt.PUBLISHED_HEAD_COUNT} published heads
 only **{len(eligible)}** ({", ".join(f"`{l}.{h}`" for l, h in eligible)}) were
-eligible to be scored as senders at all. The other {len(out_of_scope)}
+eligible to be scored as senders at all. the other {len(out_of_scope)}
 ({", ".join(f"`{l}.{h}`" for l, h in out_of_scope)}) occupy the *receiver* slot in
-this measurement — they are unmeasured, not measured-and-failed, exactly the
-distinction Phase 3 drew for `9.0` and `11.9`.
+this measurement, they are unmeasured, not measured-and-failed, exactly the
+distinction phase 3 drew for `9.0` and `11.9`.
 
-So the honest reading is **0 of the {len(eligible)} in-scope heads cleared the bar**,
-not 0 of 7. That is still a miss, and it is the clearest negative result in this
+so the honest reading is **0 of the {len(eligible)} in-scope heads cleared the bar**,
+not 0 of 7. that is still a miss, and it is the clearest negative result in this
 phase.
 
-What the criterion *did* find is the appendix set: {", ".join(f"`{l}.{h}`" for l, h in ext_hits) or "nothing"}.
-Against the **extended 10-head circuit** the plan fixed in advance — the seven plus
-Appendix B's `0.1`, `0.3`, `0.5` — that is
+what the criterion *did* find is the appendix set: {", ".join(f"`{l}.{h}`" for l, h in ext_hits) or "nothing"}.
+against the **extended 10-head circuit** the plan fixed in advance, the seven plus
+appendix B's `0.1`, `0.3`, `0.5`, that is
 **{len(ext_hits)}/{len(gt.EXTENDED_CIRCUIT and [h for hs in gt.EXTENDED_CIRCUIT.values() for h in hs])}**.
-The criterion is doing on this task what it did on IOI: finding early heads that
+the criterion is doing on this task what it did on IOI: finding early heads that
 deliver signal to a receiver without moving the output much, and finding nothing
 among the heads that move the output directly.
 """
 
     return f"""
-## The receiver-side criterion, at a recalibrated threshold
+# The receiver-side criterion, at a recalibrated threshold
 
-Phase 3's rule, unchanged:
+phase 3's rule, unchanged:
 
 > threshold = 99th percentile of `|path_signal|` under a shuffled-source null,
 > rounded up to two significant figures
 
 Recalibrated on this task's null and committed in
-`results/phase6_preregistration.json` before this comparison existed. It produced
-**{prereg['threshold']}**, against Phase 3's {0.11} on IOI — the null here is much
+`results/phase6_preregistration.json` before this comparison existed. it produced
+**{prereg['threshold']}**, against phase 3's {0.11} on IOI, the null here is much
 tighter (median {prereg['null_median']:.4f}, 99th percentile
 {prereg['raw_quantile']:.4f}, max {prereg['null_max']:.4f} over
 {prereg['n_null_measurements']} measurements).
 
 Inheriting IOI's 0.11 would have been the wrong call in the other direction from
-Phase 3's warning: here it would have been far too *strict*, not too lenient. That
+phase 3's warning: here it would have been far too *strict*, not too lenient. that
 is the argument for recalibrating the null under a fixed rule rather than reusing
 a number.
 
 {_table(rows, ["group", "position", "receivers", "senders scored", "cleared", "which"])}
 
-Scored against the published circuit: **{len(cmp['matches'])}/{gt.PUBLISHED_HEAD_COUNT}**,
-precision {cmp['precision']:.2f}. As in Phase 3 this is a *different definition of
+scored against the published circuit: **{len(cmp['matches'])}/{gt.PUBLISHED_HEAD_COUNT}**,
+precision {cmp['precision']:.2f}. as in phase 3 this is a *different definition of
 found* and is reported beside the logit-based numbers rather than merged into them.
 {scope_note}"""
 
@@ -439,12 +418,12 @@ def _search(payload: dict) -> str:
     rows = []
     for row in sorted(check, key=lambda r: r["head"]):
         if row["outcome"] in ("no published spec", "not scored"):
-            rows.append([f"`{row['head']}`", row["class"] or "—", "—", "—", "—", row["outcome"]])
+            rows.append([f"`{row['head']}`", row["class"] or "n/a", ", ", ", ", ", ", row["outcome"]])
             continue
         rows.append([
-            f"`{row['head']}`", row["class"] or "—",
+            f"`{row['head']}`", row["class"] or "n/a",
             f"`{row['published_spec']}`",
-            str(row["published_rank"]) if row["published_rank"] else "—",
+            str(row["published_rank"]) if row["published_rank"] else ", ",
             f"`{row['top_spec']}` {row['top_score']:+.3f}",
             row["outcome"],
         ])
@@ -452,15 +431,12 @@ def _search(payload: dict) -> str:
     scoreable = sum(counts.get(k, 0) for k in ("agreement", "ambiguous", "disagreement"))
     agreed = counts.get("agreement", 0)
 
-    # Absolute-position screen: tally by the *bare index* the search actually saw.
-    # The semantic label is attached afterwards, in parentheses, purely so the
-    # result can be read — the search never had it.
     labels = payload["absolute_labels"]
     tally: dict[int, int] = {}
     for entry in payload["absolute_top"][:50]:
         tally[entry["index"]] = tally.get(entry["index"], 0) + 1
     abs_summary = ", ".join(
-        f"`t{i}` x{v} (= {labels.get(str(i), '—')})"
+        f"`t{i}` x{v} (= {labels.get(str(i), 'n/a')})"
         for i, v in sorted(tally.items(), key=lambda kv: -kv[1])
     )
 
@@ -471,42 +447,42 @@ def _search(payload: dict) -> str:
     sem_rows = [[k, str(v)] for k, v in sorted(sem_tally.items(), key=lambda kv: -kv[1])]
 
     return f"""
-## Searching for the receiver specifications
+# Searching for the receiver specifications
 
-Phase 4's exhaustive screen, unchanged. `search.py` does not import either
-ground-truth module, and the run asserts that before starting — the check was
-widened in this phase from "does not import `ground_truth`" to "does not import
-any `ground_truth*` module", because a second answer key would otherwise have
+phase 4's exhaustive screen, unchanged. `search.py` doesnt import either
+ground-truth module, and the run asserts that before starting, the check was
+widened in this phase from "doesnt import `ground_truth`" to "doesnt import
+any `ground_truth*` module", cuz a second answer key would otherwise have
 opened a hole in the guarantee.
 
-This circuit is better served by the check than IOI was. For IOI only three of
+This circuit is better served by the check than IOI was. for IOI only three of
 seven classes had a published receiver spec, so four were unscoreable by
-construction. Here the paper states one covering all
-{gt.PUBLISHED_HEAD_COUNT} heads at once — "the most important influences on these
-heads are the influences on their **values at the YY position**" — so every head
+construction. here the paper states one covering all
+{gt.PUBLISHED_HEAD_COUNT} heads at once, "the most important influences on these
+heads are the influences on their values at the YY position", so every head
 has a published `v@YY` to check the search against.
 
 {_table(summary, ["outcome", "count", ""])}
 
-**Of the {scoreable} specifications the search could weigh, it recovered {agreed}.**
+of the {scoreable} specifications the search could weigh, it recovered {agreed}.
 
 {_table(rows, ["head", "class", "published", "rank", "search's own top spec", "outcome"])}
 
-### Do the position labels matter?
+# do the position labels matter?
 
-The unlabelled screen scores bare token indices `t0…tN` with no semantic meaning
-attached. Labels are attached *after* the search, purely to read its output.
+the unlabelled screen scores bare token indices `t0…tN` with no semantic meaning
+attached. labels are attached *after* the search, purely to read its output.
 
 | screen | top positions within its own top 50 |
 |---|---|
 | semantic | {", ".join(f"`{k}` x{v}" for k, v in sem_tally.items())} |
 | absolute | {abs_summary} |
 
-Given only bare token indices, the search concentrated on the same positions the
+given only bare token indices, the search concentrated on the same positions the
 labelled screen used, and its top five specifications are identical up to the
-position's name. The labels were not carrying the result.
+position's name. the labels werent carrying the result.
 
-Unlike IOI, this task needed no restriction to a single template or ordering for
+unlike IOI, this task needed no restriction to a single template or ordering for
 the absolute screen: the published task is one sentence frame with single-token
 substitutions, so every prompt already has the same length and index *k* means the
 same thing in every row.
@@ -514,7 +490,7 @@ same thing in every row.
 
 
 def _overlap(payload: dict) -> str:
-    """The two published circuits are not disjoint, which qualifies the headline."""
+    """the two published circuits arent disjoint, which qualifies the headline."""
     shared = sorted(ioi_gt.ALL_HEADS & gt.ALL_HEADS)
     shared_upstream = sorted(set(gt.APPENDIX_UPSTREAM_HEADS) & ioi_gt.ALL_HEADS)
     if not shared:
@@ -534,24 +510,24 @@ def _overlap(payload: dict) -> str:
         )
 
     return f"""
-## A complication: the two circuits are not disjoint
+# A complication: the two circuits arent disjoint
 
 {len(shared)} of the {gt.PUBLISHED_HEAD_COUNT} published greater-than heads are also
 members of the published IOI circuit.
 
 {_table(rows, ["head", "IOI class", "greater-than class"])}
 
-This phase recovered {len(found_shared)} of those {len(shared)}
-({", ".join(f"`{h}`" for h in found_shared) or "none"}), and Phase 1 had already
-recovered both on IOI. So of the
+this phase recovered {len(found_shared)} of those {len(shared)}
+({", ".join(f"`{h}`" for h in found_shared) or "none"}), and phase 1 had already
+recovered both on IOI. so of the
 {len(primary['headline']['matches'])}/{gt.PUBLISHED_HEAD_COUNT} headline,
 **{len(primary['headline']['matches']) - len(found_shared)} heads are ones no
 earlier phase had ever found**, and {len(found_shared)} were already known to this
 pipeline from the other task.
 {upstream_note}
-That does not make the transfer result circular — the search and the chain were
+that doesnt make the transfer result circular, the search and the chain were
 given no IOI information, and the heads were rediscovered from this task's own
-counterfactual. But "a second, independent circuit" is not quite the right phrase
+counterfactual. but "a second, independent circuit" isnt quite the right phrase
 for a target that shares {len(shared)} components with the first, and the number
 above is the honest version of it.
 """
@@ -559,28 +535,28 @@ above is the honest version of it.
 
 def _reuse(payload: dict) -> str:
     return """
-## What actually transferred — the measure of generality
+# What actually transferred, the measure of generality
 
-Recovery numbers say how well the method did. This says how much of it was the
-*same method*. Every file in the repository falls into exactly one row.
+Recovery numbers say how well the method did. this says how much of it was the
+*same method*. every file in the repository falls into exactly one row.
 
-### Pure reuse — imported and called, not one line changed
+# pure reuse, imported and called, not one line changed
 
 | module | what it does | used here for |
 |---|---|---|
 | `interventions.py` | activation patching, path patching, sweeps, greedy narrowing | every measurement in this phase |
 | `search.py` | receiver-specification screen and confirmation | both screens, stage B |
 | `metrics.py` | answer-key-free KL and total variation | the generic-metric columns |
-| `model.py` | model loading | — |
+| `model.py` | model loading | n/a |
 | `corruption.py` | generic vocabulary substitution | both generic schemes |
 
 `interventions.py`, `search.py` and `metrics.py` are the causal core, and **none of
-them was touched**. They type-annotate against `IOIDataset` but never depend on it
-at runtime, so a dataset exposing the same five members drops straight in. That
+them was touched**. they type-annotate against `IOIDataset` but never depend on it
+at runtime, so a dataset exposing the same five members drops straight in. that
 contract was implicit before this phase and is now written down at the top of
 `greater_than.py`.
 
-### Changed, and exactly how much
+# Changed, and exactly how much
 
 | module | change | why |
 |---|---|---|
@@ -588,12 +564,12 @@ contract was implicit before this phase and is now written down at the top of
 | `ground_truth.py` | added a `CIRCUIT` alias | so `comparison.py` need not know which circuit it holds |
 | `ioi.py` | generic corruption body moved out, call site left | so both tasks call one function instead of two lookalikes |
 
-No existing call site was edited. Every `compare(...)` written in Phases 1–5 still
-means what it meant, because the new parameter defaults to IOI — verified by
+no existing call site was edited. every `compare(...)` written in phases 1-5 still
+means what it meant, cuz the new parameter defaults to IOI, verified by
 `check_patching.py` passing unchanged, and by IOI's corrupted token tensors hashing
 identically under all four schemes before and after the corruption extraction.
 
-### New, and necessarily task-specific
+# new, and necessarily task-specific
 
 | module | why it has to be new |
 |---|---|
@@ -602,9 +578,9 @@ identically under all four schemes before and after the corruption extraction.
 | `run_phase6_greater_than.py` | the runner, wiring the above into the existing library |
 | `phase6_report.py` | this report |
 
-**The honest summary**: the causal machinery transferred untouched. The scoring
+**the honest summary**: the causal machinery transferred untouched. the scoring
 module needed a parameter it should always have had. Everything else that is new
-is either the task or the answer key — the two things the README's ladder already
+is either the task or the answer key, the two things the README's ladder already
 lists as *supplied*.
 """
 
@@ -626,72 +602,71 @@ def _conclusions(payload: dict) -> str:
     generic_sized = len(sweep["corruptions"]["random_vocab_any"]["metrics"]["kl"]["size_matched"]["matches"])
 
     if ioi_recall is None:
-        verdict = "Recovery is reported above; the IOI comparison could not be read back."
+        verdict = "recovery is reported above. the IOI comparison couldnt be read back."
     elif recall > ioi_recall + 0.02:
         verdict = (
-            f"**Recovery is better here than on IOI**, not worse: "
+            f"**recovery is better here than on IOI**, not worse: "
             f"{len(hand['headline']['matches'])}/{gt.PUBLISHED_HEAD_COUNT} "
             f"({_pct(recall)}) against {_pct(ioi_recall)} of IOI's 26 under the same "
-            f"cutoff and metric. That is the opposite of the failure mode this phase "
-            f"was built to detect, and it is worth being precise about why it is not "
+            f"cutoff and metric. that is the opposite of the failure mode this phase "
+            f"was built to detect, and it is worth being precise about why it isnt "
             f"a stronger result than it looks: seven targets is a smaller and easier "
             f"set than twenty-six, and this circuit has no analogue of IOI's "
-            f"previous-token heads — the class that acted only through other heads and "
-            f"that activation patching structurally could not see."
+            f"previous-token heads, the class that acted only through other heads and "
+            f"that activation patching structurally couldnt see."
         )
     elif recall < ioi_recall - 0.02:
         verdict = (
-            f"**Recovery is worse here than on IOI**: {_pct(recall)} against "
-            f"{_pct(ioi_recall)}. The sections above report where it was lost."
+            f"**recovery is worse here than on IOI**: {_pct(recall)} against "
+            f"{_pct(ioi_recall)}. the sections above report where it was lost."
         )
     else:
         verdict = (
-            f"**Recovery is about the same as IOI's**: {_pct(recall)} against "
+            f"**recovery is about the same as IOI's**: {_pct(recall)} against "
             f"{_pct(ioi_recall)}."
         )
 
     generic_line = (
-        f"Phase 5's asymmetry reproduced: the fully generic pairing recovers "
+        f"phase 5's asymmetry reproduced: the fully generic pairing recovers "
         f"{generic_sized}/{gt.PUBLISHED_HEAD_COUNT} size-matched against "
         f"{hand_sized}/{gt.PUBLISHED_HEAD_COUNT} for the hand-built pairing. "
         if generic_sized < hand_sized else
-        f"Phase 5's degradation did **not** reproduce here: the fully generic pairing "
+        f"phase 5's degradation did **not** reproduce here: the fully generic pairing "
         f"recovers {generic_sized}/{gt.PUBLISHED_HEAD_COUNT} against "
         f"{hand_sized}/{gt.PUBLISHED_HEAD_COUNT} hand-built. "
     )
 
     return f"""
-## What this phase does and does not show
+# what this phase does and doesnt show
 
 {verdict}
 
-The pipeline was pointed at a circuit built by a different group, on a different
+the pipeline was pointed at a circuit built by a different group, on a different
 task, with a different counterfactual and a different metric, and the causal core
-ran against it without modification. Path patching reached
+ran against it without modification. path patching reached
 {len(chain['matches'])}/{gt.PUBLISHED_HEAD_COUNT} at precision
 {chain['precision']:.2f}, and its second round independently produced the heads the
-paper's appendix names as upstream dependencies — a set fixed in the plan before
+paper's appendix names as upstream dependencies, a set fixed in the plan before
 the run and never shown to the chain.
 
-{generic_line}The answer-key-free metric held up again: KL recovered
+{generic_line}the answer-key-free metric held up again: KL recovered
 {len(kl['headline']['matches'])}/{gt.PUBLISHED_HEAD_COUNT} against the hand-built
 metric's {len(hand['headline']['matches'])}/{gt.PUBLISHED_HEAD_COUNT}, on a task
-whose hand-built metric — a probability difference over a hundred year tokens —
-looks nothing like IOI's two-token logit difference.
+whose hand-built metric, a probability difference over a hundred year tokens, looks nothing like IOI's two-token logit difference.
 
-**What it does not show.** Three limits, none of them incremental:
+what it doesnt show. three limits, none of them incremental:
 
-1. **Same model.** Greater-than lives in GPT-2 small, as IOI does. This tests
-   generality across *tasks and circuits*, not across models. Nothing here licenses
-   a claim about a model the pipeline has not seen.
-2. **Still supplied: which behaviour to study.** The plan named the task, the
-   template and the counterfactual, all taken from the paper. The README's ladder
+1. **same model.** greater-than lives in GPT-2 small, as IOI does. This tests
+   generality across *tasks and circuits*, not across models. nothing here licenses
+   a claim about a model the pipeline hasnt seen.
+2. still supplied: which behaviour to study. the plan named the task, the
+   template and the counterfactual, all taken from the paper. the README's ladder
    put task construction above the line this project has crossed, and this phase
-   does not move it — it only shows that everything *below* the line transfers.
-3. **Two circuits is two.** A method that fits one circuit and transfers to a
-   second is better evidence than one that fits one circuit. It is not evidence
+   doesnt move it, it only shows that everything *below* the line transfers.
+3. **two circuits is two.** A method that fits one circuit and transfers to a
+   second is better evidence than one that fits one circuit. It isnt evidence
    that it transfers to circuits unlike both, and the honest reading of this phase
-   is that one specific failure mode — being silently fitted to IOI — was tested
+   is that one specific failure mode, being silently fitted to IOI, was tested
    for and not found.
 """
 

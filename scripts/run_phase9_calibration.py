@@ -1,32 +1,4 @@
-"""Phase 9: does a per-scheme null floor separate a real blind spot from noise?
-
-    python scripts/run_phase9_calibration.py --circuit docstring
-    python scripts/run_phase9_calibration.py --circuit greater_than
-    python scripts/run_phase9_calibration.py --circuit ioi        # the holdout
-    python scripts/run_phase9_calibration.py --report-only
-
-The rule, the scoring table, the holdout and eight predictions were fixed in
-`results/PHASE9_PLAN.md`, committed before this file existed; the characterization it
-rests on was committed before that.
-
-Phase 8's flag compared every scheme against one shared cutoff of 0.02. But normalized
-recovery divides by each scheme's own clean-vs-corrupted span, so that number does not
-mean the same thing under two counterfactuals. This script replaces it with Phase 3's
-rule applied per scheme:
-
-    theta(s) = 99th percentile of |normalized recovery| under a shuffled-source null,
-               rounded up to two significant figures
-
-and recomputes Phase 8's verdicts with **nothing else changed**, so the two runs differ
-in the criterion alone.
-
-For docstring and greater-than the real sweeps are **read back from the committed Phase
-8 payloads** rather than repeated: re-running them could only introduce a difference
-this phase would then have to disentangle from the criterion. Only the null sweeps are
-new. IOI has never been run through the multi-scheme pipeline at all, so it gets both.
-
-The answer key is opened at the end, after every calibrated verdict exists.
-"""
+"""phase 9: does a per-scheme null floor separate a real blind spot from noise?"""
 
 from __future__ import annotations
 
@@ -55,7 +27,7 @@ from causal_interp.model import load
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
 
-# Inherited, all of them. Phase 1's cutoff is kept only as the *comparison* baseline —
+# Inherited
 # the number this phase is testing a replacement for.
 PHASE8_THRESHOLD = 0.02
 METRIC = "logit_diff"
@@ -71,7 +43,7 @@ CIRCUITS = {
     },
     "ioi": {
         "task": IOI_TASK, "ground_truth": gt_ioi, "model": "gpt2-small",
-        "phase8": None, "role": "HOLDOUT — never run through the multi-scheme pipeline",
+        "phase8": None, "role": "HOLDOUT, never run through the multi-scheme pipeline",
     },
 }
 
@@ -95,13 +67,7 @@ def _hs(head: tuple[int, int]) -> str:
 
 
 def assert_analysis_is_blind() -> None:
-    """The calibration path must not be able to see an answer key.
-
-    Phase 4 introduced this for `search.py`, Phase 6 widened it, Phase 8 extended it to
-    the three modules that decide the disagreement verdicts. Phase 9 adds nothing new to
-    the list — `pipeline.null_floor` lives in a module already on it — and re-runs the
-    check because the threshold is now computed there too.
-    """
+    """the calibration path must not be able to see an answer key."""
     for name in ("search.py", "agreement.py", "pipeline.py", "schemes.py",
                  "interventions.py"):
         source = (Path(__file__).resolve().parents[1] / "causal_interp" / name).read_text(
@@ -111,16 +77,13 @@ def assert_analysis_is_blind() -> None:
             stripped = line.strip()
             if stripped.startswith(("import ", "from ")) and "ground_truth" in stripped:
                 raise SystemExit(f"{name} imports ground truth: {stripped!r}")
-    print("no module on the calibration path imports a ground_truth module — ok")
+    print("no module on the calibration path imports a ground_truth module, ok")
 
 
-# ---------------------------------------------------------------------------
-# the real effects: reused where they exist, measured where they do not
-# ---------------------------------------------------------------------------
+# The real effects: reused where they exist, measured where they dont
 
 
 def stored_effects(circuit: str) -> tuple[dict[str, dict[tuple[int, int], float]], dict[str, float], dict]:
-    """Phase 8's committed per-scheme effects, spans and scheme table."""
     payload = json.loads((RESULTS_DIR / CIRCUITS[circuit]["phase8"]).read_text(encoding="utf-8"))
     runs = payload["discovery"]["runs"]
     effects = {
@@ -132,7 +95,6 @@ def stored_effects(circuit: str) -> tuple[dict[str, dict[tuple[int, int], float]
 
 
 def measure_effects(model, task, n: int, seed: int) -> tuple[dict, dict, dict]:
-    """The standard multi-scheme discovery path, for a circuit with no stored run."""
     discovery = pipeline.discover(
         model, task, n=n, seed=seed, threshold=PHASE8_THRESHOLD,
         progress=_progress, announce=_say,
@@ -142,9 +104,7 @@ def measure_effects(model, task, n: int, seed: int) -> tuple[dict, dict, dict]:
     return effects, spans, discovery.as_dict()
 
 
-# ---------------------------------------------------------------------------
-# scoring — the answer key is opened only inside these two functions
-# ---------------------------------------------------------------------------
+# scoring, the answer key is opened only inside these two functionsns
 
 
 def _comparison_dict(c: comparison.Comparison) -> dict:
@@ -186,9 +146,6 @@ def score(report: agreement.AgreementReport, gt) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-
-
 def run_circuit(circuit: str, n: int, seed: int) -> int:
     config = CIRCUITS[circuit]
     task = config["task"]
@@ -196,7 +153,7 @@ def run_circuit(circuit: str, n: int, seed: int) -> int:
     started = time.time()
 
     print(f"\n{'#' * 72}")
-    print(f"# Phase 9 — {task.name} ({config['model']})   [{config['role']}]")
+    print(f"# Phase 9, {task.name} ({config['model']})   [{config['role']}]")
     print(f"# {len(task.discovery_schemes)} schemes, primary {task.primary_scheme}")
     print(f"{'#' * 72}")
 
@@ -207,18 +164,18 @@ def run_circuit(circuit: str, n: int, seed: int) -> int:
         effects, spans, source = stored_effects(circuit)
         source_kind = "phase8"
     else:
-        print("\nreal effects: measuring — this circuit has no stored multi-scheme run")
+        print("\nreal effects: measuring, this circuit has no stored multi-scheme run")
         effects, spans, source = measure_effects(model, task, n, seed)
         source_kind = "measured"
 
-    # -- the uncalibrated comparison, Phase 8's criterion --------------------
+    # -- the uncalibrated comparison, phase 8's criterion --------------------
     before = agreement.compare_schemes(
         effects, threshold=PHASE8_THRESHOLD, primary=task.primary_scheme,
         channel=f"activation patching / {METRIC} / shared 0.02", spans=spans,
     )
 
     # -- the calibration ----------------------------------------------------
-    print(f"\n{'=' * 72}\nnull calibration — Phase 3's rule, per scheme\n{'=' * 72}")
+    print(f"\n{'=' * 72}\nnull calibration, Phase 3's rule, per scheme\n{'=' * 72}")
     floors = pipeline.calibrate(
         model, task, n=n, seed=seed, progress=_progress, announce=_say
     )
@@ -239,7 +196,7 @@ def run_circuit(circuit: str, n: int, seed: int) -> int:
     print(f"  {after.flag_text}")
 
     # -- and only now the answer key ----------------------------------------
-    print(f"\n{'=' * 72}\nSCORING — the published circuit is opened only here\n{'=' * 72}")
+    print(f"\n{'=' * 72}\nSCORING, the published circuit is opened only here\n{'=' * 72}")
     scored_before, scored_after = score(before, gt), score(after, gt)
     print(f"  published heads in the flagged set: "
           f"{scored_before['published_in_blind_spot'] or 'none'} -> "

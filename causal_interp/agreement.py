@@ -1,35 +1,4 @@
-"""What the pipeline says when two counterfactual schemes disagree about a head.
-
-Phase 7's docstring result — 3 of 6 published heads under the primary counterfactual,
-5 of 6 under a different one — was diagnosed by a human who noticed a low recall
-number and knew which alternative to try. This module is the attempt to make that
-diagnosis a routine output instead.
-
-**It must never import a `ground_truth` module**, and the Phase 8 runner asserts that
-at startup, for the same reason `search.py` carries the same prohibition: the whole
-value of a disagreement report is that it is available on a circuit with no published
-answer. Every quantity here is computed from measured effects and one inherited
-threshold. Nothing knows which heads are "right", and nothing knows which scheme is.
-
-Three things come out, and the order matters:
-
-- **per-head verdicts** — `robust` (found under every scheme) or `scheme-dependent`
-  (found under some and missed under others), with the full presence vector and the
-  per-scheme effect. Never averaged, never collapsed onto one scheme's numbers.
-- **blind spots** — for *every* scheme, the heads some other scheme found and it did
-  not. Asymmetric on purpose: "what can this experiment not see" is the question
-  Phase 7 could not answer from its own output.
-- **the flag** — fires when the primary scheme's blind spot is non-empty. A bare
-  non-emptiness test with no cutoff, so there is nothing in it to tune. It is
-  deliberately noisy in one direction: a fired flag says the answer depends on the
-  experiment, not that the primary scheme is wrong.
-
-`power` is reported beside all of it and gates nothing. A scheme whose corrupted run
-sits close to its clean run has a small denominator and therefore noisy normalized
-effects; that is worth knowing and is not grounds for dropping a scheme, because a
-power gate would be a free parameter that could be tuned until the flag fired only
-where it was wanted.
-"""
+"""What the pipeline says when two counterfactual schemes disagree about a head."""
 
 from __future__ import annotations
 
@@ -38,9 +7,6 @@ from typing import Mapping, Sequence
 
 Head = tuple[int, int]
 
-# Below this fraction of the primary scheme's span, a scheme is labelled low-power in
-# every table it appears in. Fixed in results/PHASE8_PLAN.md before any Phase 8 run.
-# An annotation, never a gate: no code path excludes a scheme on this basis.
 LOW_POWER = 0.10
 
 ROBUST = "robust"
@@ -71,7 +37,7 @@ class SchemePower:
 
 @dataclass(frozen=True)
 class HeadVerdict:
-    """One head's standing across every scheme discovery was run under."""
+    """one head's standing across every scheme discovery was run under."""
 
     head: Head
     status: str
@@ -95,12 +61,7 @@ class HeadVerdict:
 
 @dataclass
 class AgreementReport:
-    """The cross-scheme comparison for one discovery channel.
-
-    `channel` names what produced the effects — "activation patching", "path chain" —
-    so the same analysis can be run at more than one level of the pipeline and the
-    results kept apart.
-    """
+    """the cross-scheme comparison for one discovery channel."""
 
     channel: str
     threshold: float | Mapping[str, float]
@@ -141,15 +102,15 @@ class AgreementReport:
     def flag_text(self) -> str:
         if not self.flag:
             return (
-                f"no scheme found a head the primary scheme ({self.primary}) missed — "
+                f"no scheme found a head the primary scheme ({self.primary}) missed, "
                 f"the {len(self.union)} discovered heads are what every counterfactual sees"
             )
         heads = ", ".join(_head_str(h) for h in self.primary_blind_spot)
         return (
             f"COUNTERFACTUAL-SCHEME-DEPENDENT: {len(self.primary_blind_spot)} head(s) "
             f"[{heads}] are found under another counterfactual and missed under the "
-            f"primary one ({self.primary}). The head list under the primary "
-            f"counterfactual is not the circuit; it is what this counterfactual can see."
+            f"primary one ({self.primary}). the head list under the primary "
+            f"counterfactual isnt the circuit, it is what this counterfactual can see."
         )
 
     def as_dict(self) -> dict:
@@ -173,11 +134,6 @@ class AgreementReport:
 
 
 def discovered_set(effects: Mapping[Head, float], threshold: float) -> set[Head]:
-    """Heads whose absolute effect reaches `threshold`, under one scheme.
-
-    Absolute value for the reason `comparison.threshold_set` gives: a head that pushes
-    the model away from the answer is causally involved.
-    """
     return {head for head, value in effects.items() if abs(value) >= threshold}
 
 
@@ -189,24 +145,7 @@ def compare_schemes(
     channel: str,
     spans: Mapping[str, float] | None = None,
 ) -> AgreementReport:
-    """Cross-scheme agreement for one discovery channel.
-
-    `effects_by_scheme[scheme][head]` is that head's effect under that scheme, already
-    collapsed to whatever summary the channel uses (for activation patching: the head's
-    effect at its own best position). `spans` are the clean-minus-corrupted differences
-    used only for the power annotation.
-
-    `threshold` is either one number for every scheme — Phase 8's shared 0.02 — or a
-    **per-scheme** mapping. Phase 9 added the second form: normalized recovery divides
-    by each scheme's own span, so one cutoff does not mean the same thing under two
-    counterfactuals, and a floor calibrated against each scheme's own shuffled-source
-    null is in that scheme's units. Nothing else about the comparison changes, which is
-    what makes the two runs differ in the criterion alone.
-
-    Schemes contributing no measurements at all — a path chain that halted, say — are
-    kept in the report as empty sets rather than dropped, so a scheme that measured
-    nothing cannot be mistaken for one that measured nothing *interesting*.
-    """
+    """Cross-scheme agreement for one discovery channel."""
     schemes = tuple(effects_by_scheme)
     if primary not in schemes:
         raise ValueError(f"primary scheme {primary!r} is not among {schemes}")
@@ -271,12 +210,7 @@ def compare_schemes(
 
 
 def pairwise_overlap(report: AgreementReport) -> list[dict]:
-    """Jaccard overlap between every pair of schemes' discovered sets.
-
-    A summary, not a criterion: nothing in the flag depends on it. It exists because
-    "the schemes disagreed" is much less useful than "these two agreed and that one
-    stands apart".
-    """
+    """Jaccard overlap between every pair of schemes' discovered sets."""
     rows = []
     names = report.schemes
     for i, a in enumerate(names):
@@ -294,14 +228,12 @@ def pairwise_overlap(report: AgreementReport) -> list[dict]:
     return rows
 
 
-# ---------------------------------------------------------------------------
-# The same question, one level down: receiver specifications
-# ---------------------------------------------------------------------------
+# the same question, one level down: receiver specifications
 
 
 @dataclass(frozen=True)
 class SpecVerdict:
-    """Which receiver specification wins for one head, under each scheme."""
+    """which receiver specification wins for one head, under each scheme."""
 
     head: Head
     top_spec: Mapping[str, str]     # scheme -> "input@position"
@@ -323,17 +255,7 @@ def compare_spec_rankings(
     primary: str,
     heads: Sequence[Head] | None = None,
 ) -> dict:
-    """Do the schemes agree on which input each head receives its signal on?
-
-    `top_by_scheme[scheme][head]` is `(spec_label, score)` — the highest-scoring
-    receiver specification for that head under that scheme, as the search ranked it.
-    A head is `scheme-dependent` when the argmax differs between any two schemes: a
-    bare inequality, no threshold, no answer key.
-
-    Phase 7 found this failure one level below the head list — for both docstring
-    argument movers the search ranked the wire carrying the answer above the wire
-    choosing it — so the same comparison is run here rather than left to a reader.
-    """
+    """do the schemes agree on which input each head receives its signal on?"""
     schemes = tuple(top_by_scheme)
     if primary not in schemes:
         raise ValueError(f"primary scheme {primary!r} is not among {schemes}")

@@ -1,21 +1,4 @@
-"""Phase 5: how much does the hand-built task, corruption and metric actually buy?
-
-    python scripts/run_phase5_scoping.py            # full run, ~9 min
-    python scripts/run_phase5_scoping.py --quick
-    python scripts/run_phase5_scoping.py --report-only
-
-Phase 4 closed the receiver-specification gap and named what remained: the task,
-the corruption schemes and the metric are all still built from knowledge of what
-the model does. `results/PHASE5_AUDIT.md` itemises what each one encodes, and was
-written before this ran.
-
-This script measures two of the three. Every combination of four corruption
-schemes and three metrics is run through the same head sweep Phase 1 used, and
-each is scored against the same published circuit. One forward pass yields all
-three metrics, so any difference between them is the metric and not the run.
-
-Task construction is deliberately not attempted; the audit explains why.
-"""
+"""phase 5: how much does the hand-built task, corruption and metric actually buy?"""
 
 from __future__ import annotations
 
@@ -42,9 +25,6 @@ from causal_interp.model import load
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
 
-# Phase 1's cutoff, reused unchanged. All three metrics are normalized onto the
-# same 0-to-1 scale, so the same number means the same thing on each; picking a
-# different cutoff per metric would let the comparison be tuned.
 THRESHOLD = 0.02
 THRESHOLD_SWEEP = [0.01, 0.02, 0.05, 0.10]
 
@@ -98,10 +78,7 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
                 row = grid[layer, head]
                 effects[(layer, head)] = float(row[int(row.abs().argmax())])
         cmp = comparison.compare(comparison.threshold_set(effects, THRESHOLD), f"{corruption}/{name}")
-        # Size-matched to the published circuit. A fixed cutoff compares metrics on
-        # scales that need not agree — a metric whose effects run larger discovers
-        # more heads at the same number without discriminating any better. Taking
-        # the top 26 removes the scale entirely and leaves only the ranking.
+
         sized = comparison.compare(
             comparison.top_k_set(effects, ground_truth.PUBLISHED_HEAD_COUNT), f"{corruption}/{name}/top26"
         )

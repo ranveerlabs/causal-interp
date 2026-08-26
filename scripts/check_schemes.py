@@ -1,34 +1,4 @@
-"""Known-answer tests for Phase 8's scheme registry and agreement analysis.
-
-    python scripts/check_schemes.py        # expect: SCHEMES OK
-
-Patching is easy to get subtly wrong in ways that still produce reasonable numbers,
-which is why `check_patching.py` exists. The same is true of a disagreement report: a
-comparison that silently dropped a scheme, or one that flagged everything, would still
-print a plausible table. These are cases where the right answer follows from how the
-experiment is built rather than from the model.
-
-Six checks:
-
-1. `TaskSpec` refuses a single-scheme task. This is the whole structural claim of the
-   phase — that multi-scheme discovery is not an option a caller can leave unset — so
-   it is tested rather than asserted in prose.
-2. `agreement.py` and `pipeline.py` import no `ground_truth` module. The disagreement
-   report has to be available on a circuit with no published answer.
-3. The agreement analysis returns the verdicts that follow by construction from a
-   synthetic effect table nobody measured.
-4. The flag does not fire when every scheme agrees.
-5. Phase 8 did not disturb Phase 6: greater-than's clean and corrupted token tensors
-   under `yy01` and both generic schemes hash identically to the module as it stood
-   before this phase, read straight out of git.
-6. `xx_mismatch` is what it claims to be: exactly one token differs from the clean
-   prompt, it is the start year's century, `YY` is untouched, and the metric's answer
-   definition is unchanged.
-7. Phase 9's null sweep is the real sweep with one thing changed: under the identity
-   permutation it reproduces `sweep_heads` cell for cell, and under a derangement no
-   prompt is paired with itself. A null that quietly differed in some other way would
-   produce a plausible threshold that meant nothing.
-"""
+"""Known-answer tests for phase 8's scheme registry and agreement analysis."""
 
 from __future__ import annotations
 
@@ -55,7 +25,7 @@ from causal_interp.model import load
 from causal_interp.schemes import Scheme, TaskSpec
 
 ROOT = Path(__file__).resolve().parents[1]
-PRE_PHASE8 = "a015ecb"  # the last commit before Phase 8 touched anything
+PRE_PHASE8 = "1c1c219"  # the last commit before phase 8 touched anything
 
 failures: list[str] = []
 
@@ -70,9 +40,7 @@ def _hash(tensor: torch.Tensor) -> str:
     return hashlib.sha256(tensor.detach().cpu().numpy().tobytes()).hexdigest()[:16]
 
 
-# ---------------------------------------------------------------------------
-# 1. a task cannot register a single counterfactual
-# ---------------------------------------------------------------------------
+# 1. a task cant register a single counterfactual
 
 
 def check_registry() -> None:
@@ -119,9 +87,7 @@ def check_registry() -> None:
         )
 
 
-# ---------------------------------------------------------------------------
-# 2. the analysis cannot see an answer key
-# ---------------------------------------------------------------------------
+# 2. the analysis cant see an answer key
 
 
 def check_blindness() -> None:
@@ -135,15 +101,13 @@ def check_blindness() -> None:
         check(f"{name} imports no ground_truth module", not offenders, "; ".join(offenders))
 
 
-# ---------------------------------------------------------------------------
 # 3 and 4. the agreement analysis on a table nobody measured
-# ---------------------------------------------------------------------------
 
 
 def check_agreement() -> None:
     print("\nagreement analysis (synthetic)")
-    # Head (0,0) clears everywhere; (1,1) clears only under `alt`; (2,2) only under
-    # `primary`; (3,3) clears nowhere. Threshold 0.02, Phase 1's.
+    # head (0,0) clears everywhere
+    # `primary`. (3,3) clears nowhere. threshold 0.02, phase 1's.
     effects = {
         "primary": {(0, 0): 0.9, (1, 1): 0.001, (2, 2): 0.5, (3, 3): 0.0},
         "alt": {(0, 0): 0.4, (1, 1): 0.30, (2, 2): 0.001, (3, 3): 0.0},
@@ -221,9 +185,7 @@ def check_agreement() -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# 5. Phase 6 is undisturbed
-# ---------------------------------------------------------------------------
+# 5. phase 6 is undisturbed
 
 
 def _load_pre_phase8_module(model):
@@ -235,8 +197,8 @@ def _load_pre_phase8_module(model):
     path.write_text(source, encoding="utf-8")
     spec = importlib.util.spec_from_file_location("greater_than_pre_phase8", path)
     module = importlib.util.module_from_spec(spec)
-    # dataclasses resolves annotations through sys.modules, so the module has to be
-    # registered before its body runs.
+    # dataclasses resolves annotations through sys.modules
+    # Registered before its body runs.
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
@@ -256,9 +218,7 @@ def check_backward_compatibility(model) -> None:
         check(f"{scheme}: tokens hash identically", same, _hash(after.corrupted_tokens))
 
 
-# ---------------------------------------------------------------------------
 # 6. the authored scheme is what it says it is
-# ---------------------------------------------------------------------------
 
 
 def check_xx_mismatch(model) -> None:
@@ -295,13 +255,7 @@ def check_xx_mismatch(model) -> None:
 
 
 def check_null_sweep(model) -> None:
-    """Phase 9: the shuffled-source null differs from the real sweep only in its source.
-
-    Two things are checked, both of which follow from how the null is built rather than
-    from the model: the identity permutation must reproduce the real sweep exactly, and
-    a derangement must leave no prompt paired with itself. The first is what makes the
-    calibrated threshold comparable with the effects it judges.
-    """
+    """phase 9: the shuffled-source null differs from the real sweep only in its source."""
     print("\nPhase 9 null sweep")
     ds = greater_than.GreaterThanDataset(model, n=16, corruption="yy01", seed=0)
     baseline, _, _ = baseline_for(model, ds)
@@ -341,7 +295,7 @@ def main() -> int:
 
     print()
     if failures:
-        print(f"SCHEMES FAILED — {len(failures)} check(s): " + "; ".join(failures))
+        print(f"SCHEMES FAILED, {len(failures)} check(s): " + "; ".join(failures))
         return 1
     print("SCHEMES OK")
     return 0

@@ -1,6 +1,6 @@
 {
  "meta": {
-  "note": "scheme-level re-analysis of Phase 9's discriminator signals",
+  "note": "scheme-level re-analysis of phase 9's discriminator signals",
   "n_rows": 13,
   "circuits": [
    "docstring",

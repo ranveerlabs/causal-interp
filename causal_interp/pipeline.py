@@ -1,20 +1,4 @@
-"""Discovery under every registered counterfactual scheme — the default path.
-
-Phases 1-7 each wrote their own loop over corruption schemes and then reported one of
-them as the result. This module makes the loop the pipeline's own: given a `TaskSpec`,
-it sweeps every head at every position under **every** registered discovery scheme, and
-returns the per-scheme effects together with the cross-scheme agreement analysis from
-`causal_interp.agreement`.
-
-There is deliberately **no single-scheme entry point**. `TaskSpec` refuses to be
-constructed with fewer than two discovery schemes and `compare_schemes` refuses to
-score fewer than two, so the multi-scheme comparison is not something a caller can
-switch off — which is the difference between Phase 7's one-off diagnostic and a
-standard part of the method.
-
-Nothing here imports a ground-truth module. Scoring the discovered heads against a
-published circuit happens afterwards, in the phase script, on this module's output.
-"""
+"""Discovery under every registered counterfactual scheme, the default path."""
 
 from __future__ import annotations
 
@@ -49,13 +33,7 @@ def sweep_all_metrics(
     positions: Sequence[str],
     progress: Callable[[int, int], None] | None = None,
 ) -> dict[str, torch.Tensor]:
-    """Patch every head at every position, scoring each run under all three metrics.
-
-    Phase 5's sweep, lifted out of the phase scripts that had a copy each and made
-    task-agnostic by taking the position vocabulary as an argument. One forward pass
-    yields all three metrics, so any difference between them is the metric and not the
-    run.
-    """
+    """Patch every head at every position, scoring each run under all three metrics."""
     grids = {
         name: torch.zeros(model.cfg.n_layers, model.cfg.n_heads, len(positions))
         for name in METRICS
@@ -78,11 +56,7 @@ def sweep_all_metrics(
 def collapse_positions(
     grid: torch.Tensor, positions: Sequence[str]
 ) -> tuple[dict[Head, float], dict[Head, str]]:
-    """Summarise each head by the position where its effect is largest in absolute value.
-
-    Phase 1's rule, so a head acting at one position only is not diluted by the
-    positions where it does nothing.
-    """
+    """summarise each head by the position where its effect is largest in absolute value."""
     effects: dict[Head, float] = {}
     best: dict[Head, str] = {}
     for layer in range(grid.shape[0]):
@@ -95,12 +69,6 @@ def collapse_positions(
 
 
 def rank_stats(ds, logits) -> dict[str, float]:
-    """Whatever the task calls its "does the model actually solve this" check.
-
-    The three task modules name it `io_rank_stats`, `year_rank_stats` and
-    `answer_rank_stats`; the pipeline does not need to know which, and a task that
-    provides none simply reports nothing here.
-    """
     name = next((n for n in dir(ds) if n.endswith("_rank_stats")), None)
     return {} if name is None else getattr(ds, name)(logits)
 
@@ -146,7 +114,7 @@ class SchemeRun:
 
 @dataclass
 class Discovery:
-    """Multi-scheme discovery for one task: every scheme's run, plus the comparison."""
+    """multi-scheme discovery for one task: every scheme's run, plus the comparison."""
 
     task: str
     threshold: float
@@ -175,13 +143,7 @@ def discover(
     progress: Callable[[int, int], None] | None = None,
     announce: Callable[[str], None] | None = None,
 ) -> Discovery:
-    """Run activation-patching discovery under every registered scheme, then compare.
-
-    Returns per-scheme effects *and* an `AgreementReport` per metric. The agreement
-    report is not optional and not computed on request: a caller that wants the head
-    list gets the disagreement analysis in the same object, because the Phase 7 failure
-    was precisely that the head list was available on its own.
-    """
+    """Run activation-patching discovery under every registered scheme, then compare."""
     say = announce or (lambda _text: None)
     result = Discovery(task=task.name, threshold=threshold, primary=task.primary_scheme)
 
@@ -239,12 +201,7 @@ def discover(
 
 
 def agreement_rows(report: AgreementReport, classify: Callable[[Head], str | None]) -> list[dict]:
-    """Flatten a report to CSV rows, annotating each head with a published class.
-
-    `classify` is passed in by the phase script rather than imported, so this module
-    still knows nothing about any answer key: the annotation is added on the way out,
-    after every verdict has been decided.
-    """
+    """flatten a report to CSV rows, annotating each head with a published class."""
     rows = []
     for verdict in report.verdicts:
         row = {
@@ -263,22 +220,14 @@ def as_head_effects(effects: Mapping[Head, float]) -> dict[str, float]:
     return {f"{l}.{h}": v for (l, h), v in effects.items()}
 
 
-# ---------------------------------------------------------------------------
-# Phase 9 — a discovery criterion in each scheme's own units
-# ---------------------------------------------------------------------------
+# phase 9, a discovery criterion in each scheme's own unitsts
 
-# Phase 3's rule, unchanged: the 99th percentile of a shuffled-source null, rounded up
-# to two significant figures. Phase 9 applies it to activation patching instead of
-# `path_signal`, per scheme, because normalized recovery divides by that scheme's own
-# span and a shared cutoff therefore means different things under different
-# counterfactuals. Fixed in results/PHASE9_PLAN.md before any of it was measured.
 NULL_QUANTILE = 0.99
 SIGNIFICANT_FIGURES = 2
 NULL_SEED = 20260815
 
 
 def round_up_sigfigs(value: float, digits: int = SIGNIFICANT_FIGURES) -> float:
-    """Round up, so a threshold never claims more precision than its null supports."""
     if value <= 0:
         return 0.0
     exponent = math.floor(math.log10(value)) - (digits - 1)
@@ -298,17 +247,7 @@ def null_floor(
     sigfigs: int = SIGNIFICANT_FIGURES,
     progress: Callable[[int, int], None] | None = None,
 ) -> dict:
-    """How much apparent recovery this scheme manufactures from a mismatched activation.
-
-    Runs the head sweep with the spliced clean value drawn from a deranged prompt order
-    and returns the calibrated discovery criterion for this scheme, along with the null
-    distribution behind it so the number can be checked rather than trusted.
-
-    The unit is one (head, position) cell — the unit the sweep measures. The real
-    per-head statistic is a *maximum* over positions, so comparing it against a per-cell
-    null keeps more heads than a like-for-like comparison would; that direction is
-    recorded in the plan and is against this criterion's own hypothesis.
-    """
+    """how much apparent recovery this scheme manufactures from a mismatched activation."""
     ds = task.dataset(model, n=n, corruption=scheme, seed=seed)
     baseline, _, _ = baseline_for(model, ds)
     cache, _ = clean_cache_for(model, ds)
@@ -347,12 +286,7 @@ def calibrate(
     progress: Callable[[int, int], None] | None = None,
     announce: Callable[[str], None] | None = None,
 ) -> dict[str, dict]:
-    """`null_floor` for every registered discovery scheme.
-
-    Nothing here consults a real measurement or an answer key: the null sweep never
-    pairs a prompt with its own clean activation, so no result of the actual experiment
-    can reach the threshold that will judge it.
-    """
+    """`null_floor` for every registered discovery scheme."""
     say = announce or (lambda _text: None)
     floors: dict[str, dict] = {}
     for scheme in task.discovery_schemes:

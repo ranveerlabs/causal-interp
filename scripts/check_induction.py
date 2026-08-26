@@ -1,22 +1,4 @@
-"""Known-answer tests for Phase 10's induction and auto-built task.
-
-    python scripts/check_induction.py        # expect: INDUCTION OK
-
-The counterpart of `check_patching.py` and `check_schemes.py`: cases where the correct
-answer follows from how the experiment is built rather than from anything the model
-does. Structure induction is easy to get subtly wrong in ways that still produce a
-plausible-looking task — a tie missed, a slot vocabulary silently shared between two
-schemes, a clean sample that shifts when the counterfactual changes — and every one of
-those would corrupt a cross-scheme comparison without raising anything.
-
-The synthetic frame used for the structural checks is
-
-    Then {name} went {place} and {name} slept
-
-which has one tied slot appearing at two token positions, one free slot, and a frame
-column in the final position. The right answer for every structural assertion below is
-readable off that string; none of it depends on GPT-2 having any particular behaviour.
-"""
+"""known-answer tests for phase 10's induction and auto-built task."""
 
 from __future__ import annotations
 
@@ -35,8 +17,8 @@ NAMES = ("Mary", "John", "Tom", "Paul")
 PLACES = ("home", "north", "south", "east")
 FRAME = "Then {name} went {place} and {name} slept"
 
-# One example whose name does not tokenize to a single token, so the row is longer than
-# the rest. It must be dropped by the modal-length filter and counted.
+# One example whose name doesnt tokenize to a single token
+# the rest. it must be dropped by the modal-length filter and counted.
 LONG_EXAMPLE = "Then Bartholomew went home and Bartholomew slept"
 
 failures: list[str] = []
@@ -100,9 +82,7 @@ def main() -> int:
 
     # -- 2b. the amendment's shape filter ----------------------------------
     print("\n2b. a same-length example that breaks the tie: length keeps it, shape drops it")
-    # Same token count as the rest, but the two name columns disagree — the synthetic
-    # analogue of `" 1509"` splitting as `[" 150", "9"]`. Under the pre-registered rule
-    # this one row dissolves a tie the other sixteen support.
+
     breaker = "Then Mary went home and John slept"
     mixed = examples + [breaker]
     by_length = induction.induce(model, mixed)
@@ -134,9 +114,7 @@ def main() -> int:
     print("\n3. the round-trip filter accepts canonical rows and rejects a mangled one")
     check("every input example round-trips",
           all(induction.round_trips(model, induction._tokenize(model, e)) for e in examples))
-    # " 15" followed by "09" is a real pair of tokens that the tokenizer would never
-    # produce from " 1509" — it emits [" 150", "9"] instead. This is exactly the case
-    # that breaks the fixtures, and it is checked here as a property of the filter.
+
     mangled = (
         model.tokenizer.bos_token_id,
         *model.tokenizer.encode(" 15", add_special_tokens=False),
@@ -221,14 +199,6 @@ def main() -> int:
     check("per-prompt, the clean metric is that prompt's maximum log-probability",
           torch.equal(per_prompt, per_prompt_max))
 
-    # NOT a known answer, and deliberately not asserted. `clean_argmax_logprob` pins the
-    # target to the clean run's argmax, which bounds the *clean* value at that prompt's
-    # maximum but says nothing about the corrupted run: a counterfactual that leaves the
-    # behaviour alone can make the model *more* confident in the same token, and the
-    # clean-to-corrupted span then goes to zero or turns negative. Every normalized
-    # number in the repository divides by that span. The spans are printed here for
-    # every scheme so the property is on record; what it costs is a Phase 10 result and
-    # is measured in the report, not decided by a check.
     print("\n   spans under clean_argmax_logprob (printed, not asserted):")
     for other, proposal_name in zip(built, names + [autotask.GENERIC_SCHEME]):
         with torch.no_grad():
@@ -258,7 +228,7 @@ def main() -> int:
 
     print()
     if failures:
-        print(f"INDUCTION FAILED — {len(failures)} check(s):")
+        print(f"INDUCTION FAILED, {len(failures)} check(s):")
         for name in failures:
             print(f"  - {name}")
         return 1

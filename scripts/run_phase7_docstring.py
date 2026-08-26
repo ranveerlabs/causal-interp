@@ -1,31 +1,5 @@
-"""Phase 7: run the Phases 1-6 pipeline, unmodified, against a circuit in a *different model*.
-
-    python scripts/run_phase7_docstring.py --stage sweep   # patching + path chain
-    python scripts/run_phase7_docstring.py --preregister    # recalibrate the null
-    python scripts/run_phase7_docstring.py                  # apply, search, report
-    python scripts/run_phase7_docstring.py --report-only
-
-The target, the ground truth, the scoring rules, an advance audit of what in the
-code is GPT-2-shaped, and seven predictions were fixed in `results/PHASE7_PLAN.md`,
-committed before this file existed.
-
-Phase 6 showed the pipeline was not fitted to IOI — but greater-than and IOI both
-live in GPT-2 small, so every number this project has produced comes from one
-12-layer, 12-head, MLP-bearing model with one tokenizer. This script points the
-same machinery at the docstring circuit in `attn-only-4l`: 4 layers, 8 heads, **no
-MLP blocks**, a different tokenizer, a different corpus.
-
-**Every threshold, cutoff, width and margin below is inherited verbatim from the
-phase that introduced it**, including `COMPONENT_KINDS`, which still contains
-`mlp_out` even though this model has no MLPs — the plan predicts that sweep returns
-exact zeros rather than raising, and removing it in advance would have hidden the
-finding instead of measuring it. The only number recalibrated is the receiver-side
-threshold, whose *rule* is Phase 3's and whose *value* must be recomputed because
-the null is model- and task-specific.
-
-The three stages are separate commands for the reason Phase 3 split `--preregister`
-out: the null threshold has to be on record before the comparison it will be judged
-by exists.
+"""
+phase 7: run the phases 1-6 pipeline, unmodified, against a circuit in a *different model*.
 """
 
 from __future__ import annotations
@@ -76,50 +50,38 @@ SWEEP_JSON = RESULTS_DIR / "phase7_sweep.json"
 PREREG_JSON = RESULTS_DIR / "phase7_preregistration.json"
 RESULTS_JSON = RESULTS_DIR / "phase7_results.json"
 
-# The model this phase exists to test transfer to. Not GPT-2 small.
+# The model this phase exists to test transfer to. not GPT-2 small.
 MODEL = "attn-only-4l"
 
-# The authors' benchmark default (`dataset_version="random_random"`), which is why
-# it is primary — a fact about the code release, decided in the plan before any
-# patching ran.
 PRIMARY_CORRUPTION = "random_random"
 
-# ---------------------------------------------------------------------------
-# Inherited constants. Not one of these was chosen for this model or this task.
-# ---------------------------------------------------------------------------
-HEADLINE_THRESHOLD = 0.02                       # Phase 1
-THRESHOLD_SWEEP = [0.005, 0.01, 0.02, 0.03, 0.05, 0.10]  # Phase 1
-COMPONENT_KINDS = ("resid_pre", "attn_out", "mlp_out")   # Phase 1 — mlp_out kept deliberately
-CHAIN_WIDTH = 4                                 # Phase 2
-NULL_QUANTILE = 0.99                            # Phase 3
-SIGNIFICANT_FIGURES = 2                         # Phase 3
-NULL_SEED = 20260815                            # Phase 3
-TOP_K_CONFIRM = 20                              # Phase 4
-AMBIGUITY_MARGIN = 0.20                         # Phase 4
-AMBIGUITY_MAX_RANK = 3                          # Phase 4
-GREEDY_CANDIDATES = 20                          # Phase 1
-GREEDY_MAX = 10                                 # Phase 1
+# Inherited constants
+HEADLINE_THRESHOLD = 0.02                       # phase 1
+THRESHOLD_SWEEP = [0.005, 0.01, 0.02, 0.03, 0.05, 0.10]  # phase 1
+COMPONENT_KINDS = ("resid_pre", "attn_out", "mlp_out")   # phase 1, mlp_out kept deliberatelyly
+CHAIN_WIDTH = 4                                 # phase 2
+NULL_QUANTILE = 0.99                            # phase 3
+SIGNIFICANT_FIGURES = 2                         # phase 3
+NULL_SEED = 20260815                            # phase 3
+TOP_K_CONFIRM = 20                              # phase 4
+AMBIGUITY_MARGIN = 0.20                         # phase 4
+AMBIGUITY_MAX_RANK = 3                          # phase 4
+GREEDY_CANDIDATES = 20                          # phase 1
+GREEDY_MAX = 10                                 # phase 1
 
 CACHE_KINDS = ("z", "q", "k", "v")
 
 
 @dataclass(frozen=True)
 class Round:
-    """One step of the iterative path-patching chain: what we ask, and where."""
+    """one step of the iterative path-patching chain: what we ask, and where."""
 
     name: str
     question: str
-    receiver_input: str | None  # None => the logits themselves
+    receiver_input: str | None  # none => the logits themselves
     position: str
     expected: str
 
-
-# The receiver input and position for each round come from the published account of
-# this circuit, exactly as Phase 2's rounds came from the IOI paper's and Phase 6's
-# from the greater-than paper's. This circuit has four levels of composition rather
-# than IOI's three, so the ladder is one round longer, and the released 37-edge
-# graph names which input each stage arrives on. Which heads turn up is not
-# constrained: all 32 are swept as senders in every round.
 ROUNDS: tuple[Round, ...] = (
     Round(
         name="direct effect on the logits",
@@ -153,12 +115,6 @@ ROUNDS: tuple[Round, ...] = (
 
 
 def assert_search_is_blind() -> None:
-    """Fail loudly if the search module can see any answer key.
-
-    Phase 6 widened Phase 4's check from `ground_truth` to any module whose name
-    starts with `ground_truth`, so a third circuit needs no change here — which is
-    the point of having widened it.
-    """
     source = (Path(__file__).resolve().parents[1] / "causal_interp" / "search.py").read_text(
         encoding="utf-8"
     )
@@ -166,7 +122,7 @@ def assert_search_is_blind() -> None:
         stripped = line.strip()
         if stripped.startswith(("import ", "from ")) and "ground_truth" in stripped:
             raise SystemExit(f"search.py imports ground truth: {stripped!r}")
-    print("search.py does not import any ground_truth module — ok")
+    print("search.py does not import any ground_truth module, ok")
 
 
 def _progress(done: int, total: int) -> None:
@@ -175,7 +131,6 @@ def _progress(done: int, total: int) -> None:
 
 
 def _round_up_sigfigs(value: float, digits: int) -> float:
-    """Round up so the threshold never claims more precision than the null supports."""
     if value <= 0:
         return 0.0
     exponent = math.floor(math.log10(value)) - (digits - 1)
@@ -187,18 +142,11 @@ def _extended_heads() -> list[Head]:
     return sorted({h for heads in gt.EXTENDED_CIRCUIT.values() for h in heads})
 
 
-# ---------------------------------------------------------------------------
-# Stage 1 — activation patching, component sweeps, and the path-patching chain
-# ---------------------------------------------------------------------------
+# stage 1
 
 
 def sweep_all_metrics(model, ds, cache, logit_baseline, dist_baseline, progress=None):
-    """Patch every head at every position, scoring each run under all three metrics.
-
-    Phase 5's function, re-expressed over this task's position vocabulary. One
-    forward pass yields all three metrics, so any difference between them is the
-    metric and not the run.
-    """
+    """Patch every head at every position, scoring each run under all three metrics."""
     grids = {
         name: torch.zeros(model.cfg.n_layers, model.cfg.n_heads, len(POSITIONS))
         for name in METRICS
@@ -219,7 +167,7 @@ def sweep_all_metrics(model, ds, cache, logit_baseline, dist_baseline, progress=
 
 
 def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
-    """Activation patching under one corruption scheme, scored under all three metrics."""
+    """activation patching under one corruption scheme, scored under all three metrics."""
     print(f"\n{'=' * 72}\ncorruption scheme: {corruption}\n{'=' * 72}")
     ds = DocstringDataset(model, n=n, corruption=corruption, seed=seed)
     logit_baseline, clean_logits, corrupted_logits = baseline_for(model, ds)
@@ -246,8 +194,8 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
     grids = sweep_all_metrics(model, ds, cache, logit_baseline, dist_baseline, _progress)
     print(f" {time.time() - t0:.0f}s")
 
-    # Collapse positions: each head is summarised by the position where its effect
-    # is largest in absolute value, so a head acting only at C_def is not diluted.
+    # collapse positions
+    # is largest in absolute value
     per_metric = {}
     for name, grid in grids.items():
         effects: dict[Head, float] = {}
@@ -267,7 +215,7 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
             comparison.top_k_set(effects, gt.PUBLISHED_HEAD_COUNT),
             f"{corruption}/{name} top {gt.PUBLISHED_HEAD_COUNT}", circuit=gt,
         )
-        # The secondary 8-head set the plan fixed in advance, scored here so it
+        # the secondary 8-head set the plan fixed in advance, scored here so it
         # exists whichever way it comes out.
         extended = _extended_heads()
         sized_ext = comparison.top_k_set(effects, len(extended))
@@ -303,9 +251,6 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
               f"  ({len(headline.discovered)} discovered)"
               f"  top{gt.PUBLISHED_HEAD_COUNT} {len(sized.matches)}/{gt.PUBLISHED_HEAD_COUNT}")
 
-    # How many head/position cells are *exact* zeros. Prediction 1 in the plan says
-    # there should be none under the primary scheme, and a full block at A_def,
-    # B_def and comma_B under `random_vocab_cdef`. Measured, not asserted.
     exact_zeros = {
         position: [
             int((grids["logit_diff"][:, :, p] == 0).sum()),
@@ -329,8 +274,8 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
         "metrics": per_metric,
     }
 
-    # Joint narrowing, on the hand-built metric only — Phase 1 ran it once per
-    # scheme and Phases 6 and 7 keep that shape.
+    # Joint narrowing
+    # scheme and phases 6 and 7 keep that shape.
     if corruption == PRIMARY_CORRUPTION:
         effects = per_metric["logit_diff"]["_effects"]
         best_positions = per_metric["logit_diff"]["_best_positions"]
@@ -357,7 +302,7 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
 
 
 def run_path_chain(model, n: int, seed: int) -> dict:
-    """Phase 2's iterative path-patching chain, on this circuit's four rounds."""
+    """phase 2's iterative path-patching chain, on this circuit's four rounds."""
     print(f"\n{'=' * 72}\npath patching chain: {PRIMARY_CORRUPTION}\n{'=' * 72}")
     ds = DocstringDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     baseline, _, _ = baseline_for(model, ds)
@@ -377,7 +322,7 @@ def run_path_chain(model, n: int, seed: int) -> dict:
                     "expected": spec.expected, "position": spec.position,
                     "receivers": [], "effects": {}, "discovered": [], "halted": True,
                 })
-                print(f"  round {index}: no receivers carried forward — chain halted")
+                print(f"  round {index}: no receivers carried forward, chain halted")
                 break
             receivers = [
                 Receiver(layer=l, head=h, position=spec.position, input=spec.receiver_input)
@@ -401,7 +346,7 @@ def run_path_chain(model, n: int, seed: int) -> dict:
             if not torch.isnan(grid[l, h])
         }
         if not effects:
-            print("    no eligible senders — chain halted")
+            print("    no eligible senders, chain halted")
             rounds.append({
                 "index": index, "name": spec.name, "question": spec.question,
                 "expected": spec.expected, "position": spec.position,
@@ -483,18 +428,11 @@ def stage_sweep(model, n: int, seed: int) -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-# Stage 2 — recalibrate the receiver-side null under Phase 3's rule
-# ---------------------------------------------------------------------------
+# stage 2, recalibrate the receiver-side null under phase 3's rulele
 
 
 def receiver_sets_from_chain() -> list[dict]:
-    """The receiver groups the path chain arrived at, read back from its output.
-
-    Phase 3 took its receivers from Phase 2's committed results rather than from the
-    answer key; Phases 6 and 7 do the same. The groups come from a chain that was
-    never told which heads to look for.
-    """
+    """the receiver groups the path chain arrived at, read back from its output."""
     if not SWEEP_JSON.exists():
         raise SystemExit(f"missing {SWEEP_JSON}; run --stage sweep first")
     data = json.loads(SWEEP_JSON.read_text(encoding="utf-8"))
@@ -513,19 +451,14 @@ def receiver_sets_from_chain() -> list[dict]:
 
 
 def _parse_receiver(text: str) -> Receiver:
-    """'3.0.q@END' -> Receiver(layer=3, head=0, input='q', position='END')."""
     node, position = text.split("@")
     layer, head, kind = node.split(".")
     return Receiver(layer=int(layer), head=int(head), position=position, input=kind)
 
 
 def preregister(model, n: int, seed: int) -> int:
-    """Compute the null, derive the threshold, write it down, and stop.
-
-    Phase 3's rule verbatim. Deliberately computes no real measurement: nothing in
-    this function can see how any head scores on the actual data.
-    """
-    print("PRE-REGISTRATION — null distribution only, no real measurements\n")
+    """Compute the null, derive the threshold, write it down, and stop."""
+    print("PRE-REGISTRATION, null distribution only, no real measurements\n")
     groups = receiver_sets_from_chain()
     ds = DocstringDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     clean_cache, _ = cache_for(model, ds.clean_tokens, CACHE_KINDS)
@@ -597,7 +530,7 @@ def preregister(model, n: int, seed: int) -> int:
         "note": (
             "Computed before any real path_signal measurement on this model, and "
             "before the receiver search was run. The rule is Phase 3's and was not "
-            "modified; the number differs because the null is model- and task-specific."
+            "modified; the number differs cuz the null is model- and task-specific."
         ),
     }
     PREREG_JSON.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -612,9 +545,7 @@ def preregister(model, n: int, seed: int) -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-# Stage 3 — receiver-input search, receiver-side criterion, comparison
-# ---------------------------------------------------------------------------
+# stage 3, receiver-input search, receiver-side criterion, comparisonon
 
 
 def run_screen(model, label: str, ds, positions) -> dict:
@@ -632,7 +563,7 @@ def run_screen(model, label: str, ds, positions) -> dict:
 
 
 def _score_spec(ranked, want, top_score) -> tuple[int | None, float, float]:
-    """Rank, score and relative gap of one published (input, position) in a head's ranking."""
+    """rank, score and relative gap of one published (input, position) in a head's ranking."""
     want_input, want_position = want
     rank = next(
         (i for i, (spec, _) in enumerate(ranked)
@@ -645,14 +576,7 @@ def _score_spec(ranked, want, top_score) -> tuple[int | None, float, float]:
 
 
 def rediscovery_check(scores: dict[ReceiverSpec, float]) -> list[dict]:
-    """Where does the published receiver spec sit in the search's own ranking?
-
-    Phase 4's function, unchanged apart from which ground-truth module it reads and
-    one addition the plan fixed in advance: this circuit has *alternative* published
-    inputs for two of its classes, and where they exist the row records how the best
-    of them would have scored. That column is reported separately and never merged
-    into the headline.
-    """
+    """where does the published receiver spec sit in the search's own ranking?"""
     rows = []
     for head in sorted(gt.ALL_HEADS):
         published = gt.receiver_spec(head)
@@ -708,11 +632,7 @@ def rediscovery_check(scores: dict[ReceiverSpec, float]) -> list[dict]:
 
 
 def receiver_side_criterion(model, n: int, seed: int, threshold: float) -> dict:
-    """Phase 3's criterion: which senders deliver signal to the chain's receivers?
-
-    Scored against the recalibrated threshold, on the same receiver groups the null
-    was calibrated on.
-    """
+    """phase 3's criterion: which senders deliver signal to the chain's receivers?"""
     groups = receiver_sets_from_chain()
     ds = DocstringDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     clean_cache, _ = cache_for(model, ds.clean_tokens, CACHE_KINDS)
@@ -781,9 +701,6 @@ def stage_main(model, n: int, seed: int) -> int:
     semantic_ds = DocstringDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     semantic = run_screen(model, "semantic positions", semantic_ds, POSITIONS)
 
-    # As for greater-than, no restriction to one template is needed: every prompt is
-    # the same frame with single-token substitutions, so index k means the same
-    # thing in every row.
     absolute_ds = DocstringDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     abs_positions = absolute_positions(absolute_ds)
     absolute = run_screen(model, "absolute positions", absolute_ds, abs_positions)
@@ -854,14 +771,11 @@ def stage_main(model, n: int, seed: int) -> int:
 
 
 def semantic_of_absolute(ds, index: int) -> str:
-    """What a bare token index turns out to be, used only to interpret results."""
     labels = [name for name in POSITIONS if bool((ds.positions[name] == index).all())]
-    return "/".join(labels) if labels else "—"
+    return "/".join(labels) if labels else ", "
 
 
-# ---------------------------------------------------------------------------
 # output helpers
-# ---------------------------------------------------------------------------
 
 
 def _comparison_dict(c: comparison.Comparison) -> dict:

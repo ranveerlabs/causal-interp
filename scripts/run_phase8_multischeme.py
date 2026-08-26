@@ -1,36 +1,4 @@
-"""Phase 8: discovery under every registered counterfactual, and what disagrees.
-
-    python scripts/run_phase8_multischeme.py --circuit docstring
-    python scripts/run_phase8_multischeme.py --circuit greater_than
-    python scripts/run_phase8_multischeme.py --report-only
-
-The design, the scheme registrations, the decision rules and eight predictions were
-fixed in `results/PHASE8_PLAN.md`, committed before this file existed.
-
-Phase 7 found that the primary counterfactual decides which parts of a circuit are
-visible at all — its routing heads are invisible to a metric read off a token the
-counterfactual replaces — and that a different published counterfactual recovers 5 of
-6 heads where the primary finds 3. That was a one-off diagnostic, run because a human
-saw a low recall number and knew what to try.
-
-This script re-runs Phase 6's circuit and Phase 7's circuit through
-`causal_interp.pipeline`, which sweeps **every** registered scheme and returns the
-cross-scheme agreement analysis in the same object as the head list. Three channels
-are compared, in order of the pipeline's own dependency chain:
-
-    1. activation patching   — which heads clear the threshold under each scheme
-    2. the path chain        — which senders each scheme's chain arrives at
-    3. the receiver search   — which input each head's signal arrives on, per scheme
-
-**The answer key is not consulted until every verdict above has been decided.** The
-scoring section is last on purpose and is separated by a banner in the output, because
-the phase's actual question is whether the structure catches Phase 7's blindness
-*without* a human knowing to look for it.
-
-Every threshold and cutoff is inherited: 0.02 from Phase 1, the chain width from
-Phase 2, the position vocabularies from the task modules. Nothing is recalibrated,
-and this phase adds no free parameter — the flag is a non-emptiness test.
-"""
+"""phase 8: discovery under every registered counterfactual, and what disagrees."""
 
 from __future__ import annotations
 
@@ -66,28 +34,21 @@ from causal_interp.model import load
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
 
-# ---------------------------------------------------------------------------
-# Inherited constants. Not one of these was chosen for this phase.
-# ---------------------------------------------------------------------------
-HEADLINE_THRESHOLD = 0.02   # Phase 1
-CHAIN_WIDTH = 4             # Phase 2
+# inherited constants. not one of these was chosen for this phase.
+HEADLINE_THRESHOLD = 0.02   # phase 1
+CHAIN_WIDTH = 4             # phase 2
 PRIMARY_METRIC = "logit_diff"
 
 
 @dataclass(frozen=True)
 class Round:
-    """One step of the iterative path-patching chain: what we ask, and where."""
+    """one step of the iterative path-patching chain: what we ask, and where."""
 
     name: str
     question: str
-    receiver_input: str | None  # None => the logits themselves
+    receiver_input: str | None  # none => the logits themselves
     position: str
 
-
-# The chain rounds are copied verbatim from `run_phase6_greater_than.py` and
-# `run_phase7_docstring.py`. They come from each paper's account of the mechanism, as
-# they did in Phases 2, 6 and 7; nothing about them is new here, and re-deriving them
-# would have made this phase's chains incomparable with those phases'.
 GREATER_THAN_ROUNDS: tuple[Round, ...] = (
     Round("direct effect on the logits",
           "which heads move the prediction without another head relaying it?", None, "END"),
@@ -129,13 +90,7 @@ CIRCUITS = {
 
 
 def assert_analysis_is_blind() -> None:
-    """Fail loudly if anything in the discovery path can see an answer key.
-
-    Phase 4 introduced this check for `search.py`; Phase 6 widened it to any module
-    whose name starts with `ground_truth`. Phase 8 adds the three modules that decide
-    the disagreement verdicts, because a flag computed with the answer key in reach
-    would prove nothing about what the pipeline can see on its own.
-    """
+    """Fail loudly if anything in the discovery path can see an answer key."""
     for name in ("search.py", "agreement.py", "pipeline.py", "schemes.py"):
         source = (Path(__file__).resolve().parents[1] / "causal_interp" / name).read_text(
             encoding="utf-8"
@@ -144,7 +99,7 @@ def assert_analysis_is_blind() -> None:
             stripped = line.strip()
             if stripped.startswith(("import ", "from ")) and "ground_truth" in stripped:
                 raise SystemExit(f"{name} imports ground truth: {stripped!r}")
-    print("search.py, agreement.py, pipeline.py, schemes.py import no ground_truth — ok")
+    print("search.py, agreement.py, pipeline.py, schemes.py import no ground_truth, ok")
 
 
 def _progress(done: int, total: int) -> None:
@@ -165,19 +120,11 @@ def _parse_head(text: str) -> tuple[int, int]:
     return int(layer), int(head)
 
 
-# ---------------------------------------------------------------------------
-# Channel 2 — the path-patching chain, run under every scheme
-# ---------------------------------------------------------------------------
+# channel 2, the path-patching chain, run under every schememe
 
 
 def run_chain(model, task, rounds, cache_kinds, scheme: str, n: int, seed: int) -> dict:
-    """Phase 2's iterative chain, on one scheme.
-
-    Identical in structure to the chains in Phases 2, 6 and 7 — each round's receivers
-    are the previous round's top senders, and the answer key is never consulted to
-    choose them. The only difference is that it runs once per registered scheme rather
-    than once on the primary.
-    """
+    """phase 2's iterative chain, on one scheme."""
     ds = task.dataset(model, n=n, corruption=scheme, seed=seed)
     baseline, _, _ = baseline_for(model, ds)
     clean_cache, _ = cache_for(model, ds.clean_tokens, cache_kinds)
@@ -252,18 +199,11 @@ def run_chain(model, task, rounds, cache_kinds, scheme: str, n: int, seed: int) 
     }
 
 
-# ---------------------------------------------------------------------------
-# Channel 3 — the receiver-specification search, run under every scheme
-# ---------------------------------------------------------------------------
+# Channel 3, the receiver-specification search, run under every schememe
 
 
 def run_spec_search(model, task, cache_kinds, scheme: str, n: int, seed: int) -> dict:
-    """Screen every receiver specification under one scheme, and keep each head's best.
-
-    Phase 4's screen, unchanged. What Phase 8 adds is running it once per scheme and
-    comparing the argmaxes: Phase 7 found the blindness repeats here, with the wire
-    carrying the answer outranking the wire that chooses it.
-    """
+    """Screen every receiver specification under one scheme, and keep each head's best."""
     ds = task.dataset(model, n=n, corruption=scheme, seed=seed)
     baseline, _, _ = baseline_for(model, ds)
     clean_cache, _ = cache_for(model, ds.clean_tokens, cache_kinds)
@@ -289,17 +229,11 @@ def run_spec_search(model, task, cache_kinds, scheme: str, n: int, seed: int) ->
     }
 
 
-# ---------------------------------------------------------------------------
-# Scoring — everything below this line consults the published circuit
-# ---------------------------------------------------------------------------
+# scoring, everything below this line consults the published circuitit
 
 
 def _comparison_dict(c: comparison.Comparison) -> dict:
-    """The same serializer Phases 6 and 7 each carry, copied rather than shared.
-
-    `comparison.py` is the module every phase scores through, and Phase 8 has no reason
-    to edit it.
-    """
+    """The same serializer phases 6 and 7 each carry, copied rather than shared."""
     return {
         "label": c.label,
         "n_discovered": len(c.discovered),
@@ -359,12 +293,7 @@ def score_against_circuit(report: agreement.AgreementReport, gt) -> dict:
 
 
 def score_spec_agreement(spec_reports: dict, spec_agreement: dict, gt) -> dict:
-    """Where the published receiver specification sits, per scheme, for each head.
-
-    The counterpart of Phase 4's rediscovery check, asked once per scheme so that
-    "the search disagrees with the paper" can be separated from "the search agrees
-    with the paper under a different counterfactual".
-    """
+    """where the published receiver specification sits, per scheme, for each head."""
     rows = []
     for head in sorted(gt.ALL_HEADS):
         published = gt.receiver_spec(head)
@@ -403,9 +332,7 @@ def score_spec_agreement(spec_reports: dict, spec_agreement: dict, gt) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Driver
-# ---------------------------------------------------------------------------
+# driver
 
 
 def run_circuit(circuit: str, n: int, seed: int) -> int:
@@ -416,7 +343,7 @@ def run_circuit(circuit: str, n: int, seed: int) -> int:
 
     model = load(config["model"])
     print(f"\n{'#' * 72}")
-    print(f"# Phase 8 — {task.name} ({config['model']}), "
+    print(f"# Phase 8, {task.name} ({config['model']}), "
           f"{len(task.discovery_schemes)} registered schemes")
     print(f"# primary: {task.primary_scheme}   "
           f"threshold: {HEADLINE_THRESHOLD} (Phase 1's, inherited)")
@@ -432,7 +359,7 @@ def run_circuit(circuit: str, n: int, seed: int) -> int:
         progress=_progress, announce=_say,
     )
     head_report = discovery.agreement[PRIMARY_METRIC]
-    print(f"\n{'=' * 72}\ncross-scheme agreement — activation patching\n{'=' * 72}")
+    print(f"\n{'=' * 72}\ncross-scheme agreement, activation patching\n{'=' * 72}")
     for scheme in head_report.schemes:
         power = head_report.power[scheme]
         label = "  LOW-POWER" if power.low_power else ""
@@ -442,7 +369,7 @@ def run_circuit(circuit: str, n: int, seed: int) -> int:
     print(f"  scheme-dependent : {len(head_report.scheme_dependent)}")
     print(f"\n  {head_report.flag_text}\n")
 
-    # -- channel 2: the path chain under every scheme -------------------------
+    # -- channel 2
     print(f"{'=' * 72}\npath-patching chain, once per scheme\n{'=' * 72}")
     chains = {}
     for scheme in task.discovery_schemes:
@@ -457,7 +384,7 @@ def run_circuit(circuit: str, n: int, seed: int) -> int:
     )
     print(f"\n  {chain_report.flag_text}\n")
 
-    # -- channel 3: the receiver-spec search under every scheme ---------------
+    # -- channel 3
     print(f"{'=' * 72}\nreceiver-specification search, once per scheme\n{'=' * 72}")
     spec_runs = {}
     for scheme in task.discovery_schemes:
@@ -473,7 +400,7 @@ def run_circuit(circuit: str, n: int, seed: int) -> int:
           f"{spec_report['n_scheme_dependent']} of {spec_report['n_heads']} heads")
 
     # -- and only now, the answer key ----------------------------------------
-    print(f"\n{'=' * 72}\nSCORING — the published circuit is opened only here\n{'=' * 72}")
+    print(f"\n{'=' * 72}\nSCORING, the published circuit is opened only here\n{'=' * 72}")
     scored_heads = score_against_circuit(head_report, gt)
     scored_chain = score_against_circuit(chain_report, gt)
     scored_specs = score_spec_agreement(spec_runs, spec_report, gt)

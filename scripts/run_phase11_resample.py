@@ -1,23 +1,4 @@
-"""Phase 11, step 2 — re-run discovery R times under independent resampling.
-
-    python scripts/run_phase11_resample.py --circuit docstring
-    python scripts/run_phase11_resample.py --circuit greater_than
-
-Measurement only. **This file imports no `ground_truth` module and computes no
-statistic.** It runs `pipeline.discover` once per seed and stores the raw
-`logit_diff` grids, so that the stability statistics in
-`scripts/phase11_analysis.py` are computed from measurements that existed before
-any of them was named — the same separation Phases 4, 6, 8 and 9 enforce, made
-structural here by putting the two halves in different files.
-
-The axis, R, the seeds, the frozen theta table and everything downstream were
-fixed in `results/PHASE11_PLAN.md`, committed before this file existed.
-
-One JSON per (circuit, seed), so a three-hour sweep is resumable and a crash
-costs one resample rather than ten. Only the `logit_diff` grids are kept: the
-metric was fixed in the plan, and the per-position grid is what the plan's
-position-fixed footnote variant needs.
-"""
+"""phase 11, step 2, re-run discovery R times under independent resampling."""
 
 from __future__ import annotations
 
@@ -41,12 +22,12 @@ from causal_interp.model import load
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = ROOT / "results"
 
-# Every one of these is inherited from the plan, not chosen here.
+# every one of these is inherited from the plan, not chosen here.
 SEEDS = tuple(range(10))          # R = 10
-N_PROMPTS = 128                   # Phase 8's n, held fixed
+N_PROMPTS = 128                   # phase 8's n, held fixed
 METRIC = "logit_diff"             # the plan's metric
-PHASE8_THRESHOLD = 0.02           # passed to discover() only because it demands one;
-                                  # no Phase 11 statistic reads the agreement report
+PHASE8_THRESHOLD = 0.02           # passed to discover() only cuz it demands one.
+                                  # no phase 11 statistic reads the agreement report
 
 CIRCUITS = {
     "docstring": {"task": DOCSTRING_TASK, "model": "attn-only-4l"},
@@ -60,7 +41,7 @@ def _progress(done: int, total: int) -> None:
 
 
 def assert_measurement_is_blind() -> None:
-    """No module on this path — including this script — may import an answer key."""
+    """no module on this path, including this script, may import an answer key."""
     targets = [ROOT / "causal_interp" / n for n in
                ("search.py", "agreement.py", "pipeline.py", "schemes.py", "interventions.py",
                 "metrics.py", "docstring.py", "greater_than.py")]
@@ -70,7 +51,7 @@ def assert_measurement_is_blind() -> None:
             stripped = line.strip()
             if stripped.startswith(("import ", "from ")) and "ground_truth" in stripped:
                 raise SystemExit(f"{path.name} imports ground truth: {stripped!r}")
-    print("nothing on the measurement path imports a ground_truth module — ok")
+    print("nothing on the measurement path imports a ground_truth module, ok")
 
 
 def out_path(circuit: str, seed: int) -> Path:
@@ -109,7 +90,7 @@ def run_one(model, task, circuit: str, seed: int) -> float:
                 "corrupted": run.corrupted,
                 "span": run.span,
                 "accuracy": run.accuracy,
-                # (n_layers, n_heads, n_positions) — the plan's e(h, s, r) is the
+                # (n_layers, n_heads, n_positions), the plan's e(h, s, r) is thehe
                 # max-|.| collapse of this, and the footnote variant reads it directly.
                 "grid": run.grids[METRIC],
             }
@@ -135,7 +116,7 @@ def main() -> int:
     config = CIRCUITS[args.circuit]
     task = config["task"]
     print(f"\n{'#' * 72}")
-    print(f"# Phase 11 — {task.name} ({config['model']})")
+    print(f"# Phase 11, {task.name} ({config['model']})")
     print(f"# {len(task.discovery_schemes)} schemes x {len(args.seeds)} resamples, "
           f"n={N_PROMPTS}, metric {METRIC}")
     print(f"{'#' * 72}")
@@ -148,7 +129,7 @@ def main() -> int:
             continue
         print(f"\n{'~' * 72}\nresample {seed}\n{'~' * 72}")
         total += run_one(model, task, args.circuit, seed)
-    print(f"\nPhase 11 measurement for {args.circuit} done — {round(total, 1)}s of new sweeps")
+    print(f"\nPhase 11 measurement for {args.circuit} done, {round(total, 1)}s of new sweeps")
     return 0
 
 

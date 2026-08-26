@@ -1,20 +1,4 @@
-"""Phase 11, steps 3-5 — stability statistics, then the answer key, in that order.
-
-    python scripts/phase11_analysis.py
-
-Part A computes every statistic the plan registered from the resampled sweeps alone.
-It touches no answer key: the only thing it reads out of a Phase 9 payload is the
-`floors` block, which is the shuffled-source null and contains no published head.
-Part A writes `results/phase11_stability.json` to disk **before Part B is entered**,
-so the blind half of the analysis is a committed artefact rather than a claim.
-
-Part B opens the published head lists and runs the three tests — P1, P2, P3 — exactly
-as `results/PHASE11_PLAN.md` fixed them, then scores the nine predictions.
-
-Everything here was fixed by that plan, committed before this file existed. Where the
-plan left a genuine gap, the resolution is marked `PLAN GAP` in the code and disclosed
-in the report rather than quietly chosen.
-"""
+"""Phase 11, steps 3-5, stability statistics, then the answer key, in that order."""
 
 from __future__ import annotations
 
@@ -32,12 +16,12 @@ RESULTS = ROOT / "results"
 CIRCUITS = ("docstring", "greater_than")
 SEEDS = tuple(range(10))
 METRIC = "logit_diff"
-PHASE8_THRESHOLD = 0.02        # the criterion Phase 8's flag used; P3's flagged set
+PHASE8_THRESHOLD = 0.02        # the criterion phase 8's flag used. p3's flagged set
 N_PERMUTATIONS = 20_000
 PERM_SEED = 20260823
 BIG = 1e12                     # stand-in for an infinite SNR (sd exactly zero)
 
-# The plan's bars, transcribed. None of them is computed here.
+# the plan's bars, transcribed. none of them is computed here.
 P1_MEDIAN_GAIN = 0.05
 P1_ALPHA = 0.05 / 3
 P2_RHO = 0.7
@@ -47,11 +31,8 @@ PRED4_BAR = 0.85
 PRED5_BAR = 3.0
 
 
-# ============================================================ shared statistics
-
-
 def spearman(xs: list[float], ys: list[float]) -> float:
-    """Rank correlation with midranks for ties — the note's implementation."""
+    """rank correlation with midranks for ties, the note's implementation."""
     def ranks(vs: list[float]) -> list[float]:
         order = sorted(range(len(vs)), key=lambda i: vs[i])
         out = [0.0] * len(vs)
@@ -77,11 +58,6 @@ def spearman(xs: list[float], ys: list[float]) -> float:
 
 
 def auc(scores: dict[str, float], positives: set[str]) -> float:
-    """P(a random positive outranks a random negative), ties a half.
-
-    The same function the scheme-level note used, so Label A is comparable and P1's
-    numbers sit on the scale the project already reports AUCs on.
-    """
     pos = [scores[h] for h in scores if h in positives]
     neg = [scores[h] for h in scores if h not in positives]
     if not pos or not neg:
@@ -101,11 +77,7 @@ def quantile(values: list[float], q: float) -> float:
 
 
 def wilcoxon_signed_rank_exact(diffs: list[float]) -> dict:
-    """Two-sided exact signed-rank test. n <= 9 here, so the null is enumerated.
-
-    Zero differences are dropped (the standard Wilcoxon rule, not Pratt's); the
-    effective n is reported so the reader can see how many survived.
-    """
+    """two-sided exact signed-rank test. n <= 9 here, so the null is enumerated."""
     nonzero = [d for d in diffs if d != 0.0]
     n = len(nonzero)
     if n == 0:
@@ -135,16 +107,16 @@ def wilcoxon_signed_rank_exact(diffs: list[float]) -> dict:
     return {"n_eff": n, "w_plus": observed, "p": extreme / (2 ** n)}
 
 
-# ============================================================ PART A — no answer key
+# ============================================================ PART A
 
 
 def load_resamples(circuit: str) -> dict:
-    """Every seed's grids for one circuit, plus the metadata they must all agree on."""
+    """every seed's grids for one circuit, plus the metadata they must all agree on."""
     payloads = {}
     for seed in SEEDS:
         path = RESULTS / f"phase11_{circuit}_seed{seed}.json"
         if not path.exists():
-            raise SystemExit(f"missing {path.name} — run scripts/run_phase11_resample.py first")
+            raise SystemExit(f"missing {path.name}, run scripts/run_phase11_resample.py first")
         payloads[seed] = json.loads(path.read_text(encoding="utf-8"))
 
     metas = {seed: p["meta"] for seed, p in payloads.items()}
@@ -157,17 +129,12 @@ def load_resamples(circuit: str) -> dict:
 
 
 def thetas(circuit: str) -> dict[str, float]:
-    """The frozen per-scheme null floors. `floors` contains no published head."""
     payload = json.loads((RESULTS / f"phase9_{circuit}.json").read_text(encoding="utf-8"))
     return {scheme: block["threshold"] for scheme, block in payload["floors"].items()}
 
 
 def collapse(grid: list, mode: str, fixed: dict[str, int] | None = None) -> dict[str, float]:
-    """The pipeline's own rule: each head's value at the position of largest |effect|.
-
-    `mode="fixed"` instead reads every resample at the position seed 0 chose — the
-    plan's footnote variant, declared there as ineligible to be the result.
-    """
+    """The pipeline's own rule: each head's value at the position of largest |effect|."""
     out: dict[str, float] = {}
     for layer, rows in enumerate(grid):
         for head, row in enumerate(rows):
@@ -181,7 +148,7 @@ def collapse(grid: list, mode: str, fixed: dict[str, int] | None = None) -> dict
 
 
 def effect_series(payloads: dict, mode: str = "max") -> tuple[dict, dict]:
-    """e(h, s, r) for every scheme, as {scheme: {head: [value per seed]}}."""
+    """E(h, s, r) for every scheme, as {scheme: {head: [value per seed]}}."""
     schemes = list(payloads[SEEDS[0]]["runs"])
     fixed_positions = {
         scheme: {
@@ -206,7 +173,7 @@ def effect_series(payloads: dict, mode: str = "max") -> tuple[dict, dict]:
 
 
 def head_statistics(series: dict, theta: dict[str, float]) -> dict:
-    """S1-S4 and the two magnitude baselines, per (scheme, head). No answer key."""
+    """S1-S4 and the two magnitude baselines, per (scheme, head). no answer key."""
     out: dict[str, dict[str, dict]] = {}
     zero_sd = 0
     for scheme, per_head in series.items():
@@ -238,13 +205,6 @@ def head_statistics(series: dict, theta: dict[str, float]) -> dict:
 
 
 def jaccard(a: set[str], b: set[str]) -> float:
-    """PLAN GAP: the plan did not say what Jaccard means for two empty sets.
-
-    Resolved as undefined and the pair skipped, rather than 1.0. A scheme whose null
-    floor exceeds every effect it produces discovers nothing in any resample, and
-    calling that perfect set reproducibility would be the most misleading available
-    answer. Disclosed in the report.
-    """
     if not a and not b:
         return float("nan")
     return len(a & b) / len(a | b)
@@ -252,7 +212,7 @@ def jaccard(a: set[str], b: set[str]) -> float:
 
 def scheme_statistics(series: dict, spans: dict, theta: dict[str, float],
                       heads_stats: dict) -> dict:
-    """T1-T5, per scheme. No answer key."""
+    """T1-T5, per scheme. no answer key."""
     out: dict[str, dict] = {}
     for scheme, per_head in series.items():
         heads = sorted(per_head)
@@ -290,7 +250,7 @@ def scheme_statistics(series: dict, spans: dict, theta: dict[str, float],
 
 
 def crux(series: dict, heads_stats: dict) -> dict:
-    """The plan's diagnostic: is SNR just magnitude, and is the noise homoscedastic?"""
+    """the plan's diagnostic: is SNR just magnitude, and is the noise homoscedastic?"""
     out: dict[str, dict] = {}
     for scheme, block in heads_stats.items():
         heads = sorted(block)
@@ -311,7 +271,7 @@ def crux(series: dict, heads_stats: dict) -> dict:
 
 
 def part_a() -> dict:
-    """Everything the plan registered for steps 1-3, with no answer key in reach."""
+    """everything the plan registered for steps 1-3, with no answer key in reach."""
     blind: dict = {"circuits": {}, "meta": {
         "seeds": list(SEEDS), "metric": METRIC,
         "note": "computed and written before any published head list was read",
@@ -339,15 +299,11 @@ def part_a() -> dict:
     return blind
 
 
-# ============================================================ PART B — the answer key
+# ============================================================ PART B
 
 
 def published_heads(circuit: str) -> set[str]:
-    """The circuit's published head list, recovered from Phase 9's committed scores.
-
-    The same route `scripts/scheme_level_analysis.py` uses: every scheme's matches u
-    misses is the identical set, and the assertion is the check.
-    """
+    """The circuit's published head list, recovered from phase 9's committed scores."""
     payload = json.loads((RESULTS / f"phase9_{circuit}.json").read_text(encoding="utf-8"))
     sets = {
         frozenset(v["matches"]) | frozenset(v["misses"])
@@ -360,13 +316,12 @@ def published_heads(circuit: str) -> set[str]:
 
 
 def label_a() -> dict[tuple[str, str], float]:
-    """Label A, read back from the committed scheme-level note. Not re-derived."""
     payload = json.loads((RESULTS / "scheme_level_analysis.json").read_text(encoding="utf-8"))
     return {(r["circuit"], r["scheme"]): r["aim_auc"] for r in payload["rows"]}
 
 
 def p1_head_level(blind: dict) -> dict:
-    """Does any stability statistic beat magnitude at ranking published heads?"""
+    """does any stability statistic beat magnitude at ranking published heads?"""
     candidates = ("s1_hit_fraction", "s2_snr", "s3_sign_consistency")
     baselines = ("bm_mean_abs", "b0_seed0")
     rows = []
@@ -404,7 +359,7 @@ def p1_head_level(blind: dict) -> dict:
 
 
 def p2_scheme_level(blind: dict) -> dict:
-    """Does scheme-level stability predict scheme aim? n = 9, registered as underpowered."""
+    """does scheme-level stability predict scheme aim? n = 9, registered as underpowered."""
     signals = ("t1_rank_reproducibility", "t2_set_reproducibility",
                "t3_median_hit_fraction", "t4_median_snr", "t5_span_cv")
     labels = label_a()
@@ -469,7 +424,7 @@ def p2_scheme_level(blind: dict) -> dict:
 
 
 def p3_flagged(blind: dict) -> dict:
-    """Is the disagreement that flagged a head reproducible? Docstring only."""
+    """Is the disagreement that flagged a head reproducible? docstring only."""
     circuit = "docstring"
     phase9 = json.loads((RESULTS / f"phase9_{circuit}.json").read_text(encoding="utf-8"))
     before = phase9["before"]
@@ -510,7 +465,7 @@ def p3_flagged(blind: dict) -> dict:
 
 
 def reproduction_check() -> dict:
-    """Prediction 1: does seed 0 reproduce the committed Phase 8 effects?"""
+    """prediction 1: does seed 0 reproduce the committed phase 8 effects?"""
     out = {}
     for circuit in CIRCUITS:
         seed0 = json.loads(
@@ -607,7 +562,7 @@ def write_head_csv(blind: dict) -> None:
 
 
 def main() -> int:
-    print("PART A — stability statistics, no answer key")
+    print("PART A, stability statistics, no answer key")
     blind = part_a()
     blind_path = RESULTS / "phase11_stability.json"
     slim = {
@@ -618,7 +573,7 @@ def main() -> int:
         },
     }
     blind_path.write_text(json.dumps(slim, indent=2), encoding="utf-8")
-    print(f"wrote {blind_path.name} — Part A is on disk before Part B is entered\n")
+    print(f"wrote {blind_path.name}, Part A is on disk before Part B is entered\n")
 
     for circuit in CIRCUITS:
         block = blind["circuits"][circuit]
@@ -626,7 +581,7 @@ def main() -> int:
               f"{len(next(iter(block['heads'].values())))} heads, "
               f"{block['zero_sd_heads']} heads with sd exactly 0")
 
-    print("\nPART B — the published head lists are opened only here")
+    print("\nPART B, the published head lists are opened only here")
     repro = reproduction_check()
     p1 = p1_head_level(blind)
     p2 = p2_scheme_level(blind)

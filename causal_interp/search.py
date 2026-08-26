@@ -1,22 +1,4 @@
-"""Searching for receiver specifications instead of being told them.
-
-Phases 1-3 asked about receiver inputs the paper had already named. This module
-searches for them: given no account of the mechanism, which of a head's inputs,
-at which token position, carries information that matters?
-
-**This module must never import `causal_interp.ground_truth`.** The search has to
-be able to run on a circuit with no published answer, and a search that consults
-the answer key is not a search. The comparison against the published circuit
-happens afterwards, in the Phase 4 script, on the output this module produces.
-
-Two stages, sized by measured cost (see `results/PHASE4_SEARCH_SPACE.md`):
-
-- `screen_specs` scores every receiver specification with one forward pass, so the
-  whole grid is affordable and is searched exhaustively.
-- `confirm_spec` sweeps all 144 heads as senders into one specification, which
-  costs about 18 seconds and so runs only on the specifications that survive the
-  screen.
-"""
+"""Searching for receiver specifications instead of being told them."""
 
 from __future__ import annotations
 
@@ -42,7 +24,7 @@ RECEIVER_INPUTS = ("q", "k", "v")
 
 @dataclass(frozen=True)
 class ReceiverSpec:
-    """One point in the search space: a head input, at a token position."""
+    """one point in the search space: a head input, at a token position."""
 
     layer: int
     head: int
@@ -60,17 +42,7 @@ class ReceiverSpec:
 
 
 def absolute_positions(ds: IOIDataset) -> list[str]:
-    """Register one position name per token index and return the names.
-
-    Only valid when every prompt has the same length, which is why the
-    absolute-position search runs on a single template: otherwise index *k* would
-    refer to a different word in every row and the search would be averaging over
-    incomparable things.
-
-    The names are deliberately opaque (`t0`, `t1`, ...). Nothing about the task's
-    structure — which token is the indirect object, where the subject repeats — is
-    available to a search that uses these.
-    """
+    """register one position name per token index and return the names."""
     lengths = ds.lengths
     if int(lengths.min()) != int(lengths.max()):
         raise ValueError(
@@ -96,17 +68,7 @@ def screen_specs(
     inputs: Sequence[str] = RECEIVER_INPUTS,
     progress: Callable[[int, int], None] | None = None,
 ) -> dict[ReceiverSpec, float]:
-    """Stage A: score every receiver specification, one forward pass each.
-
-    The score is the normalized recovery of the logit difference when that single
-    input, at that single position, is spliced from the clean run into the
-    corrupted one. It asks whether the information arriving on that wire is enough
-    to move the behaviour.
-
-    This is a logit-effect screen and inherits the blind spot Phase 3 documented:
-    a receiver whose incoming information matters to the mechanism but not to the
-    output will score low here and never reach stage B.
-    """
+    """Stage A: score every receiver specification, one forward pass each."""
     out: dict[ReceiverSpec, float] = {}
     total = model.cfg.n_layers * model.cfg.n_heads * len(inputs) * len(positions)
     done = 0
@@ -125,7 +87,6 @@ def screen_specs(
 def rank_specs_for_head(
     scores: dict[ReceiverSpec, float], layer: int, head: int
 ) -> list[tuple[ReceiverSpec, float]]:
-    """Every specification for one head, best first by absolute score."""
     subset = [(s, v) for s, v in scores.items() if s.layer == layer and s.head == head]
     return sorted(subset, key=lambda pair: abs(pair[1]), reverse=True)
 
@@ -140,13 +101,7 @@ def confirm_spec(
     signal_threshold: float,
     progress: Callable[[int, int], None] | None = None,
 ) -> dict:
-    """Stage B: sweep every head as a sender into `spec`.
-
-    Scores each sender with both criteria the project already has — delivery to
-    the receiver (`path_signal`, against Phase 3's recorded threshold) and effect
-    on the output logits — and reports them separately, because Phase 3 showed
-    they disagree.
-    """
+    """stage B: sweep every head as a sender into `spec`."""
     receivers = [spec.as_receiver()]
     signals: dict[tuple[int, int], float] = {}
     effects: dict[tuple[int, int], float] = {}

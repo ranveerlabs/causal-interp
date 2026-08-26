@@ -1,49 +1,5 @@
-"""The Python docstring task: clean/corrupted prompt pairs and the logit-difference metric.
-
-Argument-name prediction. Given a Python function signature followed by a
-reST-style docstring that has already described some of its arguments, the model
-should predict which argument name comes next. From Heimersheim and Janiak (2023),
-*A circuit for Python docstrings in a 4-layer attention-only transformer*.
-
-This module is the Phase 7 counterpart of `causal_interp.ioi` and
-`causal_interp.greater_than`, written to the same interface so that everything
-downstream — patching, path patching, the receiver search, the distributional
-metrics — runs against it unchanged:
-
-    clean_tokens / corrupted_tokens   aligned (batch, pos) token batches
-    lengths                           true length per prompt
-    positions[name]                   (batch,) token indices per semantic position
-    logit_diff(logits, per_prompt)    the task's hand-built scalar metric
-    __len__                           batch size
-
-Unlike the two earlier tasks, this one does not live in GPT-2 small. The model is
-`attn-only-4l` (`NeelNanda/Attn_Only_4L512W_C4_Code`) — 4 layers, 8 heads, **no MLP
-blocks at all**, and a different tokenizer. Nothing in this module assumes
-otherwise; the token ids, the prompt length and the position indices are all
-derived from whatever tokenizer the model arrives with.
-
-The prompt construction is the authors' own, reproduced from
-`acdc/docstring/prompts.py` in the ACDC release (credited there to Stefan
-Heimersheim and Kajetan Janiak), with the same word lists and the same argument
-counts the benchmark uses. Two things differ, both recorded in
-`results/PHASE7_PLAN.md` rather than discovered later:
-
-- the random draws come from a local `random.Random` instead of reseeding the
-  global `random` module once per prompt, so a dataset is reproducible without
-  disturbing anything else in the process;
-- description words are drawn from the noun list **with this prompt's argument
-  names removed**. The two published word lists overlap, so a description word can
-  otherwise coincide with an argument name and there is then no unambiguous token
-  index for `A_def` or `B_doc`. The exclusion removes at most 15 of 687 nouns and
-  is what makes the position vocabulary well defined, exactly as `greater_than.py`
-  filters years that do not tokenize as two tokens.
-
-    clean      def f(self, p, q, A, B, C, s):  ... :param A: ..  :param B: ..  :param
-    corrupted  def f(self, p, q, X, Y, Z, s):  ... :param U: ..  :param V: ..  :param
-
-The pair is generated token-aligned: every substitution swaps one single-token
-argument name for another, so a clean activation and its corrupted counterpart live
-at the same index and patching one into the other is well defined.
+"""
+the Python docstring task: clean/corrupted prompt pairs and the logit-difference metric.
 """
 
 from __future__ import annotations
@@ -58,8 +14,7 @@ from transformer_lens import HookedTransformer
 from causal_interp.corruption import random_vocab_corruption
 from causal_interp.schemes import Scheme, TaskSpec
 
-# The two published word lists, copied verbatim from `acdc/docstring/prompts.py`.
-# Both are checked against the tokenizer in the constructor rather than trusted.
+# The two published word lists
 VARIABLE_NAMES: tuple[str, ...] = tuple(
     "data name file value test new result line user key default request path output "
     "node item url model response text version function log string field start number "
@@ -94,7 +49,7 @@ DESCRIPTION_NOUNS: tuple[str, ...] = tuple(
     "daughter sun box river profit division stone post client help image oil sector "
     "attack direction seat employment goal sign ability campaign fish item medium show "
     "version drug library press surface blood culture memory return bar talk access "
-    "deal star text cause mouth payment context reference second article chair earth "
+    "deal star text cuz mouth payment context reference second article chair earth "
     "object agency card collection communication public document weight bird rock call "
     "edge miss option quarter stock aid concept match network radio target finger "
     "forest race sex ball crime message peace review scale scene speech band expression "
@@ -132,8 +87,8 @@ DESCRIPTION_NOUNS: tuple[str, ...] = tuple(
     "stand stick tin".split(" ")
 )
 
-# The benchmark's argument counts: `get_all_docstring_things` calls the generator
-# with exactly these, so the prompt shape is the released one and not a new choice.
+# the benchmark's argument counts
+# With exactly these
 N_MATCHING_ARGS = 3
 N_DEF_PREFIX_ARGS = 2
 N_DEF_SUFFIX_ARGS = 1
@@ -141,18 +96,10 @@ N_DOC_PREFIX_ARGS = 0
 MET_DESC_LEN = 3
 ARG_DESC_LEN = 2
 
-# The semantic positions patching is resolved over. Seven, the same count IOI used,
-# named after the post's own labels. `comma_B` is the post's `,_B` — the comma
-# between `B_def` and `C_def` — spelled without the comma so it survives a markdown
-# table cell. `END` is the final `param` token, where the answer is read off.
 POSITIONS: tuple[str, ...] = (
     "A_def", "B_def", "comma_B", "C_def", "A_doc", "B_doc", "END",
 )
 
-# Three published counterfactuals from the authors' generator, then the two generic
-# Phase 5 schemes. `random_random` is primary because it is the default in the
-# released benchmark harness (`dataset_version="random_random"`) — a fact about the
-# code release, not about anything measured here.
 CORRUPTIONS: tuple[str, ...] = (
     "random_random", "random_def", "random_answer", "random_vocab_cdef", "random_vocab_any",
 )
@@ -160,10 +107,6 @@ CORRUPTIONS: tuple[str, ...] = (
 PUBLISHED_CORRUPTIONS: tuple[str, ...] = ("random_random", "random_def", "random_answer")
 GENERIC_CORRUPTIONS: tuple[str, ...] = ("random_vocab_cdef", "random_vocab_any")
 
-# Phase 8: the same five schemes, declared rather than listed. What each one *breaks*
-# and whether it leaves the answer in the prompt were the facts Phase 7 had to
-# reconstruct by hand after seeing a low recall number; here they are registered with
-# the scheme, and `causal_interp.pipeline` runs discovery under every one of them.
 SCHEMES: dict[str, Scheme] = {
     "random_random": Scheme(
         name="random_random",
@@ -214,12 +157,7 @@ class DocstringPrompt:
 
 
 class DocstringDataset:
-    """A batch of docstring prompts, tokenized, with semantic position indices.
-
-    Mirrors `IOIDataset` and `GreaterThanDataset`. `positions[name]` is a (batch,)
-    tensor of token indices, so every analysis can say "patch head 2.0 at C_def"
-    without knowing the layout.
-    """
+    """a batch of docstring prompts, tokenized, with semantic position indices."""
 
     def __init__(
         self,
@@ -244,9 +182,6 @@ class DocstringDataset:
         self.clean_tokens = model.to_tokens([p.clean for p in self.prompts])
         self.corrupted_tokens = model.to_tokens([p.corrupted for p in self.prompts])
 
-        # Every prompt is the same template with single-token substitutions, so the
-        # batch must be exactly rectangular. Verify rather than assume: a ragged
-        # batch would silently misalign every position index below.
         if self.clean_tokens.shape != self.corrupted_tokens.shape:
             raise AssertionError(
                 f"clean/corrupted shape mismatch: "
@@ -255,7 +190,7 @@ class DocstringDataset:
         length = int(self.clean_tokens.shape[1])
         self.lengths = torch.full((n,), length, dtype=torch.long, device=device)
 
-        # The answer and the distractors the metric reads, as token ids.
+        # the answer and the distractors the metric reads, as token ids.
         self.answer_token_ids = torch.tensor(
             [self._token_id(model, " " + p.answer) for p in self.prompts], device=device
         )
@@ -286,12 +221,6 @@ class DocstringDataset:
 
     @staticmethod
     def _single_token(model: HookedTransformer, words: tuple[str, ...], label: str) -> list[str]:
-        """Keep only the words that are one token with a leading space.
-
-        Both published lists were chosen for this model's tokenizer, so nothing is
-        expected to be dropped — but a different tokenizer would silently break the
-        whole position scheme, so it is measured rather than trusted.
-        """
         keep = [w for w in words if len(model.tokenizer.encode(" " + w, add_special_tokens=False)) == 1]
         if len(keep) < 40:
             raise RuntimeError(f"only {len(keep)} single-token {label} survived filtering")
@@ -300,7 +229,7 @@ class DocstringDataset:
     def _make_prompt(
         self, rng: random.Random, names: list[str], nouns: list[str]
     ) -> DocstringPrompt:
-        """One prompt, following the authors' `docstring_induction_prompt_generator`."""
+        """one prompt, following the authors' `docstring_induction_prompt_generator`."""
         n_not_matching = N_MATCHING_ARGS - 1
         total = (
             2 + N_MATCHING_ARGS + n_not_matching + n_not_matching + N_MATCHING_ARGS
@@ -325,8 +254,8 @@ class DocstringDataset:
         if rest:
             raise AssertionError(f"{len(rest)} argument names left unassigned")
 
-        # Description words must not collide with any argument name in this prompt,
-        # or the token index of `A_def` / `B_doc` stops being well defined.
+        # description words must not collide with any argument name in this prompt
+        # Or the token index of `A_def` / `B_doc` stops being well defined.
         reserved = {met_name, *all_args}
         pool = [w for w in nouns if w not in reserved]
         met_desc = rng.sample(pool, MET_DESC_LEN)
@@ -343,21 +272,16 @@ class DocstringDataset:
 
         clean = render(clean_def, clean_doc)
         if self.corruption == "random_def":
-            # The non-answer matching arguments are replaced in the *definition*, so
-            # the docstring's arguments no longer appear there and the induction
-            # match that selects the answer is broken.
+
             corrupted = render(def_prefix + not_matching + matching[-1:] + def_suffix, clean_doc)
         elif self.corruption == "random_answer":
-            # The answer itself is replaced, so the argument the model should predict
-            # is not in the prompt at all.
+            # the answer itself is replaced, so the argument the model should predict
+            # isnt in the prompt at all.
             corrupted = render(def_prefix + matching[:-1] + [random_answer] + def_suffix, clean_doc)
         elif self.corruption == "random_random":
             corrupted = render(def_prefix + rand_mid_def + def_suffix, doc_prefix + rand_mid_doc)
         else:
-            # Generic corruptions act on tokens, not text: a uniformly drawn
-            # vocabulary entry has no spelling to substitute into a template. The
-            # corrupted text is the clean text and the substitution happens after
-            # tokenization, as it does for both earlier tasks.
+
             corrupted = clean
 
         return DocstringPrompt(
@@ -370,12 +294,6 @@ class DocstringDataset:
         )
 
     def _apply_generic_corruption(self, seed: int) -> tuple[Tensor, Tensor]:
-        """Corrupt by substituting a uniformly drawn vocabulary token.
-
-        The same function `IOIDataset` and `GreaterThanDataset` call, with the
-        anchor pointed at this task's pivot instead of theirs. No knowledge of what
-        any token means is used.
-        """
         anchor = self.positions["C_def"] if self.corruption == "random_vocab_cdef" else None
         return random_vocab_corruption(
             clean_tokens=self.clean_tokens,
@@ -386,14 +304,7 @@ class DocstringDataset:
         )
 
     def _locate_positions(self) -> dict[str, Tensor]:
-        """Find the seven position indices by searching the clean tokens.
-
-        Each matching argument is looked up by token id. `A` and `B` must occur
-        exactly twice — once in the definition, once in the docstring — and `C`
-        exactly once, in the definition. Anything else means a description word
-        collided with an argument name or the template is not what this module
-        assumes, so it is a hard failure rather than a silently wrong index.
-        """
+        """Find the seven position indices by searching the clean tokens."""
         device = self.clean_tokens.device
         comma = self._token_id(self.model, ",")
         found: dict[str, list[int]] = {name: [] for name in POSITIONS}
@@ -436,19 +347,6 @@ class DocstringDataset:
     # -- metric -------------------------------------------------------------
 
     def logit_diff(self, logits: Tensor, per_prompt: bool = False) -> Tensor:
-        """The authors' docstring metric, at the END position.
-
-            logit(correct argument)  minus  max over logits of the wrong arguments
-
-        Matches `raw_docstring_metric` in the ACDC release, up to its sign: that
-        implementation negates the quantity so it can be minimized, and this one
-        does not, because everything in this project reads higher-is-better.
-
-        The wrong-answer set is the authors': every other argument name drawn for
-        the prompt, including the ones held back for the corruptions and never
-        shown. Positive means the model prefers the argument the docstring
-        convention demands.
-        """
         end = self.positions["END"]
         rows = torch.arange(len(self), device=logits.device)
         final = logits[rows, end]  # (batch, d_vocab)
@@ -458,11 +356,6 @@ class DocstringDataset:
         return diff if per_prompt else diff.mean()
 
     def answer_rank_stats(self, logits: Tensor) -> dict[str, float]:
-        """How often the model actually solves the task — a precondition for the phase.
-
-        The counterpart of `IOIDataset.io_rank_stats` and
-        `GreaterThanDataset.year_rank_stats`.
-        """
         end = self.positions["END"]
         rows = torch.arange(len(self), device=logits.device)
         final = logits[rows, end]
@@ -480,7 +373,7 @@ def _template(
     doc_args: list[str],
     doc_args_desc_words: list[list[str]],
 ) -> str:
-    """The authors' `docstring_prompt_templ` in its "rest" style, reproduced verbatim."""
+    """the authors' `docstring_prompt_templ` in its "rest" style, reproduced verbatim."""
     ind4 = 4 * " "
     def_args_str = ", ".join(def_args)
     met_desc_str = " ".join(met_desc_words)
@@ -499,8 +392,8 @@ def _template(
 {param_prefix}"""
 
 
-# The Phase 8 registration. Kept at the end of the module because it names the dataset
-# class defined above; nothing else in this file depends on it.
+# the phase 8 registration
+# Class defined above. nothing else in this file depends on it.
 TASK = TaskSpec(
     name="docstring",
     dataset=DocstringDataset,

@@ -1,37 +1,4 @@
-"""Inducing a task's structure from a handful of example prompts — Phase 10.
-
-Every task module in this project is a hand-written template plus hand-written slot
-vocabularies plus a hand-written counterfactual. `greater_than.py` is 457 lines of it,
-and `results/PHASE5_AUDIT.md` marked the whole of it `supplied` five phases ago.
-
-This module is the attempt to derive most of that from a person's example prompts
-instead. It takes a list of strings — prompts a human wrote from a one-sentence hunch,
-cut immediately before the token the behaviour should produce — and returns:
-
-- which token columns are **frame** (constant across every example) and which are
-  **slots** (they vary);
-- which slot columns are **tied** (they co-vary exactly, so they are one slot appearing
-  twice — greater-than's two century positions are the case this exists for);
-- the observed value set of each slot, which serves as its vocabulary;
-- a **position vocabulary** of bare token indices, which Phase 4 showed is as good as
-  semantic labels;
-- a set of proposed **counterfactual schemes**, one per slot plus one per tied column.
-
-Nothing here knows what a token means. There is no notion of a noun, a year, a name or
-an argument; the only operations are "is this column constant", "do these two columns
-hold the same token in every example", and "would the tokenizer reproduce this row from
-its own decoding". The last of those is the mechanized replacement for the hand-written
-`_single_token_nouns` / `_valid_years` filters, and it is the only quality gate.
-
-The algorithm is a transcription of section 3 of `results/PHASE10_PLAN.md`, committed
-before this file existed. Where the implementation had to decide something the plan did
-not spell out, the decision is commented and named as such.
-
-**It must never import a `ground_truth` module**, and the Phase 10 runner asserts that
-at startup, for the same reason `search.py` and `agreement.py` carry the prohibition: a
-task built with the answer key in reach would prove nothing about what can be built
-without one.
-"""
+"""inducing a task's structure from a handful of example prompts, phase 10."""
 
 from __future__ import annotations
 
@@ -43,59 +10,27 @@ from typing import Any, Sequence
 import torch
 from torch import Tensor
 
-# How many draws the generator is allowed per prompt it is asked for, before it gives
-# up and returns however many distinct rows it managed. Fixed here rather than exposed:
-# a caller who could raise it would be tuning the dataset size against the round-trip
-# rejection rate, and the rejection rate is one of the phase's measurements.
 ATTEMPT_BUDGET = 50
 
-# Label for the final token position. Everything downstream — `metrics.final_log_probs`
-# in particular — reads the output distribution at `positions["END"]`, so this key has
-# to exist whether or not the last column happens to vary.
 END = "END"
 
-# Which examples survive to be induced from. `FILTER_LENGTH` is section 3.1 of
-# PHASE10_PLAN.md as pre-registered and is the default, so the plan's path is what a
-# caller gets unless it asks for otherwise. `FILTER_SHAPE` is the single repair fixed in
-# PHASE10_AMENDMENT.md, added after step 1 measured what the length rule costs, and is
-# labelled post-hoc everywhere it is reported.
 FILTER_LENGTH = "length"
 FILTER_SHAPE = "shape"
 FILTER_MODES = (FILTER_LENGTH, FILTER_SHAPE)
 
 
 def shape_signature(row: Sequence[int]) -> tuple[int, ...]:
-    """Each column replaced by the first column holding the same token.
-
-    A row's *shape*: which of its positions repeat one another, ignoring what the tokens
-    are. Two renderings of one template share a shape; a rendering the tokenizer split
-    differently does not. Used only by `FILTER_SHAPE`.
-    """
     first: dict[int, int] = {}
     return tuple(first.setdefault(token, column) for column, token in enumerate(row))
 
 
 def label_for(index: int, length: int) -> str:
-    """Position label for a token index: bare `t{i}`, except the last, which is END.
-
-    Phase 4 established that the receiver-spec search finds the same positions from
-    bare indices as from semantic labels, so an induced task labels positions by index
-    and loses nothing. The one exception is the final position, which every metric in
-    the repository reads by name.
-    """
     return END if index == length - 1 else f"t{index}"
 
 
 @dataclass(frozen=True)
 class Slot:
-    """One varying part of the prompt: where it appears, and what was observed in it.
-
-    `columns` holds every token index this slot occupies. More than one means the slot
-    is **tied** — the same value appeared at all of those indices in every example, so
-    they are treated as one thing that must be written together. `values` is the
-    distinct tokens seen there, in the order the examples introduced them; it is the
-    slot's whole vocabulary, and it is exactly as large as the human's input allows.
-    """
+    """one varying part of the prompt: where it appears, and what was observed in it."""
 
     columns: tuple[int, ...]
     values: tuple[int, ...]
@@ -103,7 +38,6 @@ class Slot:
 
     @property
     def anchor(self) -> int:
-        """The column this slot is named after: its first."""
         return self.columns[0]
 
     @property
@@ -129,14 +63,7 @@ class Slot:
 
 @dataclass(frozen=True)
 class Proposal:
-    """One counterfactual the induction proposes, before anything has been measured.
-
-    `kind` is `resample` — redraw the slot's value and write it to every column the
-    slot occupies — or `desync`, which exists only for tied slots and rewrites **one**
-    of their columns, leaving its partners at the clean value. The second is the
-    mechanized form of Phase 8's authored `xx_mismatch`, and it is proposed here
-    because the slot was found to be tied, not because anyone said so.
-    """
+    """one counterfactual the induction proposes, before anything has been measured."""
 
     name: str
     kind: str
@@ -148,12 +75,7 @@ class Proposal:
 
 @dataclass
 class Structure:
-    """What the induction found: the frame, the slots, and what it had to throw away.
-
-    `dropped` is not an error path. A person writing natural examples cannot see the
-    tokenizer, so some lines will not tokenize to the same length as the rest; those
-    are dropped and counted, and the count is one of the phase's measurements.
-    """
+    """What the induction found: the frame, the slots, and what it had to throw away."""
 
     length: int
     base_row: tuple[int, ...]
@@ -170,7 +92,6 @@ class Structure:
         return tuple(sorted(c for slot in self.slots for c in slot.columns))
 
     def position_index(self, label: str) -> int:
-        """The token index a position label refers to."""
         if label == END:
             return self.length - 1
         return int(label[1:])
@@ -191,23 +112,15 @@ class Structure:
 
 
 def _tokenize(model: Any, text: str) -> tuple[int, ...]:
-    """One example's tokens, with BOS, as a plain tuple.
-
-    Tokenized one string at a time on purpose. `to_tokens` on a *list* pads to the
-    longest entry, which would make every example the same length and destroy the one
-    signal this module needs — that some of the human's lines do not fit the others.
-    """
     return tuple(int(t) for t in model.to_tokens(text)[0])
 
 
 def _keep_by_length(
     examples: Sequence[str], rows: Sequence[tuple[int, ...]]
 ) -> tuple[list[tuple[int, ...]], list[dict]]:
-    """Section 3.1 as pre-registered: keep the rows whose token length is modal."""
+    """section 3.1 as pre-registered: keep the rows whose token length is modal."""
     lengths = Counter(len(row) for row in rows)
-    # Modal length, ties broken towards the longer row. The tie-break is a choice the
-    # plan did not make; it is arbitrary and is recorded so it is not mistaken for a
-    # finding. With the fixtures used here no tie occurs.
+
     modal = max(lengths, key=lambda L: (lengths[L], L))
 
     keep, dropped = [], []
@@ -224,12 +137,7 @@ def _keep_by_length(
 def _keep_by_shape(
     examples: Sequence[str], rows: Sequence[tuple[int, ...]]
 ) -> tuple[list[tuple[int, ...]], list[dict]]:
-    """The amendment's repair: keep the largest group of rows sharing a column shape.
-
-    A strict generalization of `_keep_by_length` — rows of different lengths already
-    have different shapes — and parameter-free, since "the largest group" carries no
-    threshold. Group-size ties go to the group holding the earliest example.
-    """
+    """The amendment's repair: keep the largest group of rows sharing a column shape."""
     groups: dict[tuple, list[int]] = {}
     for i, row in enumerate(rows):
         groups.setdefault((len(row), shape_signature(row)), []).append(i)
@@ -254,15 +162,7 @@ def _keep_by_shape(
 def induce(
     model: Any, examples: Sequence[str], *, filter_mode: str = FILTER_LENGTH
 ) -> Structure:
-    """Section 3.1 of the plan: example strings in, slot structure out.
-
-    `filter_mode` defaults to the pre-registered rule. `FILTER_SHAPE` is the amendment's
-    repair and has to be asked for by name, so no caller gets it by accident.
-
-    Raises only when there is nothing to induce from — fewer than two usable examples
-    means no column can be observed to vary, and a `Structure` with no slots is not a
-    task. Everything else that goes wrong is reported rather than raised.
-    """
+    """Section 3.1 of the plan: example strings in, slot structure out."""
     if filter_mode not in FILTER_MODES:
         raise ValueError(f"filter_mode must be one of {FILTER_MODES}, got {filter_mode!r}")
     if len(examples) < 2:
@@ -285,9 +185,6 @@ def induce(
     frame_columns = tuple(c for c, col in enumerate(matrix) if len(set(col)) == 1)
     slot_columns = [c for c in range(modal) if c not in set(frame_columns)]
 
-    # Tie columns by their *value vector*: two columns are one slot exactly when they
-    # hold the same token in every kept example. Grouped by the vector itself so the
-    # relation is transitive by construction rather than by a pairwise sweep.
     groups: dict[tuple[int, ...], list[int]] = {}
     for c in slot_columns:
         groups.setdefault(matrix[c], []).append(c)
@@ -319,23 +216,13 @@ def induce(
 
 
 def round_trips(model: Any, row: Sequence[int]) -> bool:
-    """Would this tokenizer produce exactly this row from its own decoding of it?
-
-    The mechanized stand-in for every hand-written tokenizer filter in the three task
-    modules. `greater_than.py` checks that `" {century}{yy}"` splits as two tokens and
-    that nouns are single tokens; both are special cases of this one question, and
-    neither of them needs to be asked in terms of centuries or nouns.
-
-    BOS is stripped before decoding and expected back after re-encoding, because that
-    is what `to_tokens` does to any string it is handed.
-    """
     text = model.to_string(torch.tensor(list(row[1:])))
     return _tokenize(model, text) == tuple(int(t) for t in row)
 
 
 @dataclass
 class Generated:
-    """A generated clean batch and an account of what was thrown away making it."""
+    """a generated clean batch and an account of what was thrown away making it."""
 
     rows: tuple[tuple[int, ...], ...]
     attempts: int
@@ -365,17 +252,7 @@ class Generated:
 def generate(
     model: Any, structure: Structure, n: int, seed: int, budget: int = ATTEMPT_BUDGET
 ) -> Generated:
-    """Section 3.2 of the plan: slots in, a batch of distinct clean prompts out.
-
-    Each slot is sampled independently from its own observed values, which is what
-    makes the vocabularies mechanizable and is also the step that can produce nonsense:
-    nothing here knows that a century and a start year have to tokenize together. The
-    round-trip filter catches the cases where that goes wrong at the token level, and
-    the rejection rate it reports is the measurement of how often it does.
-
-    Returns however many distinct rows it managed. Falling short of `n` is a finding
-    about how small the human's input was, not an error, and the caller reports it.
-    """
+    """section 3.2 of the plan: slots in, a batch of distinct clean prompts out."""
     rng = random.Random(f"{seed}:generate")
     seen: set[tuple[int, ...]] = set()
     rows: list[tuple[int, ...]] = []
@@ -394,7 +271,7 @@ def generate(
             continue
         if not round_trips(model, candidate):
             rejected_rt += 1
-            seen.add(candidate)  # do not pay to re-check a row already rejected
+            seen.add(candidate)  # dont pay to re-check a row already rejected
             continue
         seen.add(candidate)
         rows.append(candidate)
@@ -409,12 +286,7 @@ def generate(
 
 
 def propose(structure: Structure) -> tuple[Proposal, ...]:
-    """Section 3.3 of the plan: one counterfactual per slot, plus one per tied column.
-
-    The set is fully determined by the induced structure — there is no cutoff, no
-    ranking and nothing to tune. Which of them becomes primary is decided later, by
-    measurement, in `autotask.select_primary`.
-    """
+    """Section 3.3 of the plan: one counterfactual per slot, plus one per tied column."""
     proposals: list[Proposal] = []
     for index, slot in enumerate(structure.slots):
         proposals.append(
@@ -454,19 +326,7 @@ def propose(structure: Structure) -> tuple[Proposal, ...]:
 def apply_proposal(
     proposal: Proposal, structure: Structure, rows: Sequence[Sequence[int]], seed: int
 ) -> tuple[list[tuple[int, ...]], list[int]]:
-    """Build the corrupted counterpart of every clean row under one proposal.
-
-    The redrawn value is constrained to differ from the clean one, so no prompt is
-    silently left uncorrupted — the same guarantee `corruption.random_vocab_corruption`
-    makes for its own draws, and for the same reason: a no-op draw would quietly weaken
-    the measured effect of every head.
-
-    The RNG is seeded from the scheme's *name*, so each scheme draws its own stream and
-    none of them disturbs the clean sample. `greater_than.py` arranges the same thing
-    by hand with a second `random.Random`, and Phase 8's `check_schemes.py` exists
-    because getting it wrong makes a cross-scheme comparison read a different prompt
-    set as well as a different counterfactual.
-    """
+    """build the corrupted counterpart of every clean row under one proposal."""
     rng = random.Random(f"{seed}:{proposal.name}")
     slot = structure.slots[proposal.slot_index]
     out: list[tuple[int, ...]] = []
@@ -491,15 +351,6 @@ def apply_proposal(
 
 
 def corrupted_round_trip_rate(model: Any, rows: Sequence[Sequence[int]]) -> float:
-    """What fraction of a corrupted batch the tokenizer would not itself produce.
-
-    Reported, never filtered. A corrupted row has to stay token-aligned with the clean
-    row it is paired with, so it cannot be rejected and redrawn without breaking the
-    pairing every patch depends on. `greater_than.py` avoids the problem by hand — its
-    `_alt_century` only draws centuries that tokenize with the given start year — and
-    the induction has no way to know that, so it measures the cost instead of hiding
-    it.
-    """
     if not rows:
         return 0.0
     bad = sum(0 if round_trips(model, row) else 1 for row in rows)

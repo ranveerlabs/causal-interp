@@ -1,23 +1,4 @@
-"""Scheme-level re-analysis of Phase 9's discriminator signals.
-
-    python scripts/scheme_level_analysis.py
-
-Phase 9 measured ten candidate signals over 33 flagged **heads** and found none of them
-was a discriminator. SYNTHESIS.md section 5 noticed that the unit was wrong: the thing a
-reader has to judge is a counterfactual scheme, not a head, and Phase 9's own diagnosis
-("docstring's noise came from one pathological scheme") names a scheme as the culprit.
-
-This script runs the same ten signals, plus the scheme-level fields Phase 9 stored and
-never tested, over the 13 (circuit, scheme) rows of Phase 9's floor table.
-
-Everything is read back from committed payloads. No model is run, nothing is recomputed
-from activations, and no `ground_truth` module is imported -- the published head lists are
-recovered from Phase 9's own `scored_before` block, where matches u misses is the full
-list and is identical across every scheme of a circuit.
-
-The labelling rule, the signal list and the bar for declaring a result were all fixed in
-results/SCHEME_LEVEL_NOTE.md and committed before this file existed.
-"""
+"""Scheme-level re-analysis of phase 9's discriminator signals."""
 
 from __future__ import annotations
 
@@ -33,21 +14,13 @@ RESULTS = ROOT / "results"
 CIRCUITS = ("docstring", "greater_than", "ioi")
 METRICS = ("logit_diff", "kl", "tv")
 METRIC = "logit_diff"
-THRESHOLD = 0.02          # Phase 8's shared cutoff, kept only where a signal names it
+THRESHOLD = 0.02          # phase 8's shared cutoff, kept only where a signal names it
 N_PERMUTATIONS = 20_000
 PERM_SEED = 20260820
 AUC_CUT = 0.80            # fixed in the note before any AUC was computed
 
 
-# --------------------------------------------------------------------------- loading
-
-
 def _payloads(circuit: str) -> tuple[dict, dict]:
-    """(calibration payload, discovery payload) for one circuit.
-
-    Phase 8 registered IOI's schemes and deliberately did not run it, so IOI's discovery
-    block lives inside its Phase 9 payload instead. Both have the same shape.
-    """
     phase9 = json.loads((RESULTS / f"phase9_{circuit}.json").read_text(encoding="utf-8"))
     if "discovery" in phase9:
         return phase9, phase9
@@ -60,10 +33,6 @@ def _effects(discovery: dict, scheme: str, metric: str = METRIC) -> dict[str, fl
 
 
 def _published(phase9: dict) -> list[str]:
-    """The circuit's published head list, recovered from the committed scores.
-
-    Every scheme's `matches` u `misses` is the same set; the assertion is the check.
-    """
     sets = {
         frozenset(v["matches"]) | frozenset(v["misses"])
         for v in phase9["scored_before"]["per_scheme"].values()
@@ -74,15 +43,8 @@ def _published(phase9: dict) -> list[str]:
     return published
 
 
-# ----------------------------------------------------------------------------- stats
-
-
 def auc(scores: dict[str, float], positives: set[str]) -> float:
-    """P(a random published head outranks a random unpublished one), ties at a half.
-
-    Threshold-free by construction, which is why the note picked it: it cannot be
-    contaminated by theta or by the shared 0.02, both of which are signals under test.
-    """
+    """P(a random published head outranks a random unpublished one), ties at a half."""
     pos = [abs(scores[h]) for h in scores if h in positives]
     neg = [abs(scores[h]) for h in scores if h not in positives]
     if not pos or not neg:
@@ -96,11 +58,7 @@ def auc(scores: dict[str, float], positives: set[str]) -> float:
 
 
 def spearman(xs: list[float], ys: list[float]) -> float:
-    """Rank correlation, with midranks for ties.
-
-    Phase 9's own spearman() assumed no ties. Several scheme-level signals here are
-    counts and do tie, so this one handles them properly and is used throughout.
-    """
+    """rank correlation, with midranks for ties."""
     def ranks(vs: list[float]) -> list[float]:
         order = sorted(range(len(vs)), key=lambda i: vs[i])
         out = [0.0] * len(vs)
@@ -124,8 +82,6 @@ def spearman(xs: list[float], ys: list[float]) -> float:
 
 
 def percentiles(values: list[float]) -> dict[str, float]:
-    """Same order-statistic convention Phase 9's scheme_scale() used, so the numbers
-    printed here line up with the ones already in PHASE9_CHARACTERIZATION.md."""
     v = sorted(values)
     n = len(v)
     return {
@@ -134,9 +90,6 @@ def percentiles(values: list[float]) -> dict[str, float]:
         "max": v[-1],
         "mean": statistics.fmean(v),
     }
-
-
-# ---------------------------------------------------------------------------- rows
 
 
 def build_rows() -> list[dict]:
@@ -159,7 +112,7 @@ def build_rows() -> list[dict]:
             discovered = {h for h, v in eff[s].items() if abs(v) >= THRESHOLD}
             n_heads = len(eff[s])
 
-            # Signal 10's analogue: of the heads this scheme discovers under logit_diff,
+            # signal 10's analogue
             # what share also clear 0.02 under kl and tv?
             all_three = sum(
                 1
@@ -183,7 +136,7 @@ def build_rows() -> list[dict]:
                 "precision": prec,
                 "recall": rec,
 
-                # ---- scheme-level analogues of Phase 9's ten head-level signals
+                # ---- scheme-level analogues of phase 9's ten head-level signals
                 "s01_median_over_threshold": sc["median"] / THRESHOLD,
                 "s02_max_over_median": sc["max"] / sc["median"] if sc["median"] else float("inf"),
                 "s03_max_over_primary_max": sc["max"] / primary_max if primary_max else float("inf"),
@@ -195,7 +148,7 @@ def build_rows() -> list[dict]:
                 "s09_max_effect": sc["max"],
                 "s10_all_three_metrics": all_three / len(discovered) if discovered else 0.0,
 
-                # ---- scheme-level fields Phase 9 stored and never tested
+                # ---- scheme-level fields phase 9 stored and never tested
                 "power": floor["span"] / primary_span,
                 "theta": floor["threshold"],
                 "null_median": floor["null_median"],
@@ -233,9 +186,6 @@ SIGNALS = [
 ]
 
 
-# ------------------------------------------------------------------------- testing
-
-
 def analyse(rows: list[dict], label: str) -> dict:
     ys = [r[label] for r in rows]
 
@@ -243,9 +193,7 @@ def analyse(rows: list[dict], label: str) -> dict:
     for sig in SIGNALS:
         xs = [r[sig] for r in rows]
         rho = spearman(xs, ys)
-        # Sign of the same correlation computed inside each circuit on its own. The note
-        # requires these to agree, so that a cross-circuit correlation driven purely by
-        # circuit size cannot be reported as a signal.
+
         per_circuit = {}
         for c in CIRCUITS:
             sub = [r for r in rows if r["circuit"] == c]
@@ -258,9 +206,6 @@ def analyse(rows: list[dict], label: str) -> dict:
             "sign_consistent": len(signs - {0}) <= 1,
         }
 
-    # Max-statistic permutation null: shuffle the labels, recompute every signal, keep the
-    # largest |rho| of the family. This is the correction the note fixed in advance -- with
-    # 20 signals at n=13 the per-signal p-value is meaningless.
     rng = random.Random(PERM_SEED)
     columns = {sig: [r[sig] for r in rows] for sig in SIGNALS}
     null_max = []
@@ -303,7 +248,7 @@ def main() -> None:
 
     out = {
         "meta": {
-            "note": "scheme-level re-analysis of Phase 9's discriminator signals",
+            "note": "scheme-level re-analysis of phase 9's discriminator signals",
             "n_rows": len(rows),
             "circuits": list(CIRCUITS),
             "sources": "results/phase8_*.json, results/phase9_*.json (committed)",

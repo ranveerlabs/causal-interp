@@ -1,26 +1,4 @@
-"""Phase 6: run the Phases 1-5 pipeline, unmodified, against a second published circuit.
-
-    python scripts/run_phase6_greater_than.py --stage sweep   # patching + path chain
-    python scripts/run_phase6_greater_than.py --preregister    # recalibrate the null
-    python scripts/run_phase6_greater_than.py                  # apply, search, report
-    python scripts/run_phase6_greater_than.py --report-only
-
-The target, the ground truth, the scoring rules and four predictions were fixed in
-`results/PHASE6_PLAN.md`, committed before this file existed.
-
-Everything Phases 1-5 established was built while looking at one answer key, so
-nothing yet separates a general method from one fitted to IOI. This script points
-the same machinery at the greater-than circuit (Hanna et al. 2023) and changes
-none of it. **Every threshold, cutoff, width and margin below is inherited
-verbatim from the phase that introduced it** — the constants are imported-in-spirit
-rather than re-chosen, and the only number recalibrated is the receiver-side
-threshold, whose *rule* is Phase 3's and whose *value* must be recomputed because
-the null is task-specific.
-
-The three stages are separate commands for the same reason Phase 3 split
-`--preregister` out: the null threshold has to be on record before the comparison
-that it will be judged by exists.
-"""
+"""phase 6: run the phases 1-5 pipeline, unmodified, against a second published circuit."""
 
 from __future__ import annotations
 
@@ -70,46 +48,36 @@ SWEEP_JSON = RESULTS_DIR / "phase6_sweep.json"
 PREREG_JSON = RESULTS_DIR / "phase6_preregistration.json"
 RESULTS_JSON = RESULTS_DIR / "phase6_results.json"
 
-# The task's own counterfactual, and the one every stage past the metric grid uses.
+# the task's own counterfactual
 PRIMARY_CORRUPTION = "yy01"
 
-# ---------------------------------------------------------------------------
-# Inherited constants. Not one of these was chosen for this task.
-# ---------------------------------------------------------------------------
-HEADLINE_THRESHOLD = 0.02                       # Phase 1
-THRESHOLD_SWEEP = [0.005, 0.01, 0.02, 0.03, 0.05, 0.10]  # Phase 1
-COMPONENT_KINDS = ("resid_pre", "attn_out", "mlp_out")   # Phase 1
-CHAIN_WIDTH = 4                                 # Phase 2
-NULL_QUANTILE = 0.99                            # Phase 3
-SIGNIFICANT_FIGURES = 2                         # Phase 3
-NULL_SEED = 20260815                            # Phase 3
-TOP_K_CONFIRM = 20                              # Phase 4
-AMBIGUITY_MARGIN = 0.20                         # Phase 4
-AMBIGUITY_MAX_RANK = 3                          # Phase 4
-GREEDY_CANDIDATES = 20                          # Phase 1
-GREEDY_MAX = 10                                 # Phase 1
+# inherited constants. not one of these was chosen for this task.
+HEADLINE_THRESHOLD = 0.02                       # phase 1
+THRESHOLD_SWEEP = [0.005, 0.01, 0.02, 0.03, 0.05, 0.10]  # phase 1
+COMPONENT_KINDS = ("resid_pre", "attn_out", "mlp_out")   # phase 1
+CHAIN_WIDTH = 4                                 # phase 2
+NULL_QUANTILE = 0.99                            # phase 3
+SIGNIFICANT_FIGURES = 2                         # phase 3
+NULL_SEED = 20260815                            # phase 3
+TOP_K_CONFIRM = 20                              # phase 4
+AMBIGUITY_MARGIN = 0.20                         # phase 4
+AMBIGUITY_MAX_RANK = 3                          # phase 4
+GREEDY_CANDIDATES = 20                          # phase 1
+GREEDY_MAX = 10                                 # phase 1
 
 CACHE_KINDS = ("z", "mlp_out", "q", "k", "v")
 
 
 @dataclass(frozen=True)
 class Round:
-    """One step of the iterative path-patching chain: what we ask, and where."""
+    """one step of the iterative path-patching chain: what we ask, and where."""
 
     name: str
     question: str
-    receiver_input: str | None  # None => the logits themselves
+    receiver_input: str | None  # none => the logits themselves
     position: str
     expected: str
 
-
-# The receiver input and position for each round come from the paper's account of
-# this circuit, exactly as Phase 2's rounds came from the IOI paper's account. The
-# greater-than paper states one receiver spec covering all seven heads at once —
-# "the most important influences on these heads are the influences on their values
-# at the YY position" — so there is no q/k/v ladder to climb, just the same
-# question asked one layer deeper. Which heads turn up is not constrained: all 144
-# are swept as senders in every round.
 ROUNDS: tuple[Round, ...] = (
     Round(
         name="direct effect on the logits",
@@ -136,13 +104,6 @@ ROUNDS: tuple[Round, ...] = (
 
 
 def assert_search_is_blind() -> None:
-    """Fail loudly if the search module can see either answer key.
-
-    Phase 4 checked `search.py` against `ground_truth`. A second circuit means a
-    second answer key, so the check is widened to any module whose name starts
-    with `ground_truth` — otherwise adding a circuit would have quietly opened a
-    hole in the guarantee.
-    """
     source = (Path(__file__).resolve().parents[1] / "causal_interp" / "search.py").read_text(
         encoding="utf-8"
     )
@@ -150,7 +111,7 @@ def assert_search_is_blind() -> None:
         stripped = line.strip()
         if stripped.startswith(("import ", "from ")) and "ground_truth" in stripped:
             raise SystemExit(f"search.py imports ground truth: {stripped!r}")
-    print("search.py does not import any ground_truth module — ok")
+    print("search.py does not import any ground_truth module, ok")
 
 
 def _progress(done: int, total: int) -> None:
@@ -159,7 +120,6 @@ def _progress(done: int, total: int) -> None:
 
 
 def _round_up_sigfigs(value: float, digits: int) -> float:
-    """Round up so the threshold never claims more precision than the null supports."""
     if value <= 0:
         return 0.0
     exponent = math.floor(math.log10(value)) - (digits - 1)
@@ -167,18 +127,11 @@ def _round_up_sigfigs(value: float, digits: int) -> float:
     return math.ceil(value / step) * step
 
 
-# ---------------------------------------------------------------------------
-# Stage 1 — activation patching, component sweeps, and the path-patching chain
-# ---------------------------------------------------------------------------
+# stage 1
 
 
 def sweep_all_metrics(model, ds, cache, logit_baseline, dist_baseline, progress=None):
-    """Patch every head at every position, scoring each run under all three metrics.
-
-    Phase 5's function, re-expressed over this task's position vocabulary. One
-    forward pass yields all three metrics, so any difference between them is the
-    metric and not the run.
-    """
+    """Patch every head at every position, scoring each run under all three metrics."""
     grids = {
         name: torch.zeros(model.cfg.n_layers, model.cfg.n_heads, len(POSITIONS))
         for name in METRICS
@@ -199,7 +152,7 @@ def sweep_all_metrics(model, ds, cache, logit_baseline, dist_baseline, progress=
 
 
 def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
-    """Activation patching under one corruption scheme, scored under all three metrics."""
+    """activation patching under one corruption scheme, scored under all three metrics."""
     print(f"\n{'=' * 72}\ncorruption scheme: {corruption}\n{'=' * 72}")
     ds = GreaterThanDataset(model, n=n, corruption=corruption, seed=seed)
     logit_baseline, clean_logits, corrupted_logits = baseline_for(model, ds)
@@ -226,8 +179,8 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
     grids = sweep_all_metrics(model, ds, cache, logit_baseline, dist_baseline, _progress)
     print(f" {time.time() - t0:.0f}s")
 
-    # Collapse positions: each head is summarised by the position where its effect
-    # is largest in absolute value, so a head acting only at YY is not diluted.
+    # collapse positions
+    # Is largest in absolute value, so a head acting only at YY isnt diluted.
     per_metric = {}
     for name, grid in grids.items():
         effects: dict[Head, float] = {}
@@ -269,9 +222,6 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
               f"  ({len(headline.discovered)} discovered)"
               f"  top{gt.PUBLISHED_HEAD_COUNT} {len(sized.matches)}/{gt.PUBLISHED_HEAD_COUNT}")
 
-    # How many head/position cells are *exact* zeros. Prediction 1 in the plan says
-    # every cell before YY must be one, because the published corruption changes
-    # only the YY token. Measured, not asserted.
     exact_zeros = {
         position: [
             int((grids["logit_diff"][:, :, p] == 0).sum()),
@@ -295,7 +245,7 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
         "metrics": per_metric,
     }
 
-    # Joint narrowing, on the hand-built metric only — Phase 1 ran it once per
+    # Joint narrowing
     # scheme and this keeps that shape.
     if corruption == PRIMARY_CORRUPTION:
         effects = per_metric["logit_diff"]["_effects"]
@@ -323,7 +273,7 @@ def run_corruption(model, corruption: str, n: int, seed: int) -> dict:
 
 
 def run_path_chain(model, n: int, seed: int) -> dict:
-    """Phase 2's iterative path-patching chain, on this task's rounds."""
+    """phase 2's iterative path-patching chain, on this task's rounds."""
     print(f"\n{'=' * 72}\npath patching chain: {PRIMARY_CORRUPTION}\n{'=' * 72}")
     ds = GreaterThanDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     baseline, _, _ = baseline_for(model, ds)
@@ -342,7 +292,7 @@ def run_path_chain(model, n: int, seed: int) -> dict:
                     "expected": spec.expected, "position": spec.position,
                     "receivers": [], "effects": {}, "discovered": [], "halted": True,
                 })
-                print(f"  round {index}: no receivers carried forward — chain halted")
+                print(f"  round {index}: no receivers carried forward, chain halted")
                 break
             receivers = [
                 Receiver(layer=l, head=h, position=spec.position, input=spec.receiver_input)
@@ -366,7 +316,7 @@ def run_path_chain(model, n: int, seed: int) -> dict:
             if not torch.isnan(grid[l, h])
         }
         if not effects:
-            print("    no eligible senders — chain halted")
+            print("    no eligible senders, chain halted")
             rounds.append({
                 "index": index, "name": spec.name, "question": spec.question,
                 "expected": spec.expected, "position": spec.position,
@@ -448,18 +398,11 @@ def stage_sweep(model, n: int, seed: int) -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-# Stage 2 — recalibrate the receiver-side null under Phase 3's rule
-# ---------------------------------------------------------------------------
+# stage 2, recalibrate the receiver-side null under phase 3's rulele
 
 
 def receiver_sets_from_chain() -> list[dict]:
-    """The receiver groups the path chain arrived at, read back from its output.
-
-    Phase 3 took its receivers from Phase 2's committed results rather than from
-    the answer key, and this does the same: the groups come from a chain that was
-    never told which heads to look for.
-    """
+    """the receiver groups the path chain arrived at, read back from its output."""
     if not SWEEP_JSON.exists():
         raise SystemExit(f"missing {SWEEP_JSON}; run --stage sweep first")
     data = json.loads(SWEEP_JSON.read_text(encoding="utf-8"))
@@ -478,19 +421,14 @@ def receiver_sets_from_chain() -> list[dict]:
 
 
 def _parse_receiver(text: str) -> Receiver:
-    """'9.1.v@YY' -> Receiver(layer=9, head=1, input='v', position='YY')."""
     node, position = text.split("@")
     layer, head, kind = node.split(".")
     return Receiver(layer=int(layer), head=int(head), position=position, input=kind)
 
 
 def preregister(model, n: int, seed: int) -> int:
-    """Compute the null, derive the threshold, write it down, and stop.
-
-    Phase 3's rule verbatim. Deliberately computes no real measurement: nothing in
-    this function can see how any head scores on the actual data.
-    """
-    print("PRE-REGISTRATION — null distribution only, no real measurements\n")
+    """Compute the null, derive the threshold, write it down, and stop."""
+    print("PRE-REGISTRATION, null distribution only, no real measurements\n")
     groups = receiver_sets_from_chain()
     ds = GreaterThanDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     clean_cache, _ = cache_for(model, ds.clean_tokens, CACHE_KINDS)
@@ -561,7 +499,7 @@ def preregister(model, n: int, seed: int) -> int:
         "note": (
             "Computed before any real path_signal measurement on this task, and "
             "before the receiver search was run. The rule is Phase 3's and was not "
-            "modified; the number differs because the null is task-specific."
+            "modified; the number differs cuz the null is task-specific."
         ),
     }
     PREREG_JSON.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -576,9 +514,7 @@ def preregister(model, n: int, seed: int) -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-# Stage 3 — receiver-input search, receiver-side criterion, comparison
-# ---------------------------------------------------------------------------
+# stage 3, receiver-input search, receiver-side criterion, comparisonon
 
 
 def run_screen(model, label: str, ds, positions) -> dict:
@@ -596,11 +532,7 @@ def run_screen(model, label: str, ds, positions) -> dict:
 
 
 def rediscovery_check(scores: dict[ReceiverSpec, float]) -> list[dict]:
-    """Where does the paper's named receiver spec sit in the search's own ranking?
-
-    Phase 4's function, unchanged apart from which ground-truth module it reads.
-    Runs only after the search is complete.
-    """
+    """where does the paper's named receiver spec sit in the search's own ranking?"""
     rows = []
     for head in sorted(gt.ALL_HEADS):
         published = gt.receiver_spec(head)
@@ -653,11 +585,7 @@ def rediscovery_check(scores: dict[ReceiverSpec, float]) -> list[dict]:
 
 
 def receiver_side_criterion(model, n: int, seed: int, threshold: float) -> dict:
-    """Phase 3's criterion: which senders deliver signal to the chain's receivers?
-
-    Scored against the recalibrated threshold, on the same receiver groups the
-    null was calibrated on.
-    """
+    """phase 3's criterion: which senders deliver signal to the chain's receivers?"""
     groups = receiver_sets_from_chain()
     ds = GreaterThanDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     clean_cache, _ = cache_for(model, ds.clean_tokens, CACHE_KINDS)
@@ -726,10 +654,6 @@ def stage_main(model, n: int, seed: int) -> int:
     semantic_ds = GreaterThanDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     semantic = run_screen(model, "semantic positions", semantic_ds, POSITIONS)
 
-    # Unlike IOI, no restriction to one template or one ordering is needed: the
-    # published task is a single sentence frame with single-token substitutions, so
-    # every prompt already has the same length and index k means the same thing in
-    # every row.
     absolute_ds = GreaterThanDataset(model, n=n, corruption=PRIMARY_CORRUPTION, seed=seed)
     abs_positions = absolute_positions(absolute_ds)
     absolute = run_screen(model, "absolute positions", absolute_ds, abs_positions)
@@ -800,14 +724,11 @@ def stage_main(model, n: int, seed: int) -> int:
 
 
 def semantic_of_absolute(ds, index: int) -> str:
-    """What a bare token index turns out to be, used only to interpret results."""
     labels = [name for name in POSITIONS if bool((ds.positions[name] == index).all())]
-    return "/".join(labels) if labels else "—"
+    return "/".join(labels) if labels else ", "
 
 
-# ---------------------------------------------------------------------------
 # output helpers
-# ---------------------------------------------------------------------------
 
 
 def _comparison_dict(c: comparison.Comparison) -> dict:

@@ -1,26 +1,4 @@
-"""Known-answer tests for the patching machinery on a *different model*.
-
-Run before trusting a Phase 7 result:
-    python scripts/check_patching_docstring.py
-
-`check_patching.py` verifies the same primitives against GPT-2 small and the IOI
-task. It is left untouched. This is its Phase 7 counterpart, and it exists because
-a new model is exactly where the machinery could be silently wrong: an off-by-one
-in a position index, a hook that never fires, or a head-shaped activation with a
-different layout all produce numbers that look entirely reasonable.
-
-Most checks mirror the GPT-2 small ones. Two are specific to this model:
-
-  * with **no MLP blocks**, patching every attention head at every position must
-    reproduce the clean run at the final token *exactly* — the corruption leaves
-    the END token itself unchanged, so its residual stream is its own embedding
-    plus the head outputs, and every one of those has been replaced. Tolerance
-    1e-5, against 0.05 for the same check on GPT-2 small.
-  * `hook_mlp_out` is registered on this model but never fires. Patching it is a
-    **silent no-op**, not an error. That is asserted here rather than left to be
-    discovered, because a sweep over it returns a clean grid of zeros that looks
-    like a measurement.
-"""
+"""known-answer tests for the patching machinery on a *different model*."""
 
 from __future__ import annotations
 
@@ -46,11 +24,9 @@ from causal_interp.model import load
 
 MODEL = "attn-only-4l"
 
-# The published counterfactual replaces exactly these many tokens per prompt.
 TOKENS_CHANGED = {"random_random": 5, "random_def": 2, "random_answer": 1}
 
-# Under `random_answer` only C_def differs, so clean and corrupted activations are
-# identical everywhere before it and patching there must be an *exact* zero.
+# under `random_answer` only C_def differs
 PRE_CDEF_POSITIONS = ("A_def", "B_def", "comma_B")
 
 CACHE_KINDS = ("z", "q", "k", "v", "resid_pre", "attn_out")

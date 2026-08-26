@@ -1,8 +1,4 @@
-"""Verify the environment is ready: CUDA-enabled PyTorch, a visible GPU, transformer_lens.
-
-Run after setup:
-    python scripts/check_env.py
-"""
+"""verify the environment is ready: CUDA-enabled PyTorch, a visible GPU, transformer_lens."""
 
 import sys
 from importlib.metadata import version
@@ -35,7 +31,7 @@ def main() -> int:
         print(f"compute cap      sm_{major}{minor}")
         print(f"vram             {total_gb:.1f} GiB")
 
-        # Blackwell (sm_120) needs a cu128+ build; older wheels compile no matching kernels.
+        # Blackwell (sm_120) needs a cu128+ build
         arch_list = torch.cuda.get_arch_list()
         if f"sm_{major}{minor}" not in arch_list:
             print(f"FAIL  no kernels for sm_{major}{minor} in this build (has: {', '.join(arch_list)})")
@@ -53,7 +49,7 @@ def main() -> int:
         print("FAIL  transformer_lens is not installed")
         ok = False
     else:
-        # The package exposes no __version__ attribute; read the installed metadata.
+        # the package exposes no __version__ attribute
         print(f"transformer_lens {version('transformer_lens')}")
 
     print("\n" + ("ENVIRONMENT OK" if ok else "ENVIRONMENT NOT READY"))

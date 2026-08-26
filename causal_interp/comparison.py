@@ -1,22 +1,4 @@
-"""Scoring a discovered head set against a published circuit.
-
-Kept separate from the run itself so that the comparison is pure set arithmetic
-over a ground-truth module and cannot be tuned by anything the run observed.
-
-Two comparisons are produced, because either one alone is misleading:
-
-- **Threshold-based** — every head whose effect exceeds a cutoff. Honest about
-  set size, but the cutoff is a free parameter, so it is always reported as a
-  sweep rather than a single number.
-- **Size-matched** — the top-*k* heads, *k* being the published circuit's size.
-  Has no free parameter, so it cannot be tuned; precision and recall coincide.
-
-**Which circuit** is a parameter, added in Phase 6 when a second published circuit
-arrived. It defaults to IOI, so every call written in Phases 1-5 keeps its exact
-meaning and none of them were touched. A ground-truth module qualifies as an
-argument here if it exposes `CIRCUIT`, `ALL_HEADS` and `classify` — both
-`ground_truth` and `ground_truth_greater_than` do.
-"""
+"""scoring a discovered head set against a published circuit."""
 
 from __future__ import annotations
 
@@ -67,17 +49,10 @@ def compare(discovered: set[Head], label: str, circuit: ModuleType = _default_ci
 
 
 def threshold_set(effects: dict[Head, float], threshold: float) -> set[Head]:
-    """Heads whose absolute effect reaches `threshold`.
-
-    Absolute value matters: a head that reliably pushes the model *away* from the
-    correct answer (the published negative name movers do exactly this) is
-    causally involved, and a signed cutoff would discard it.
-    """
     return {head for head, effect in effects.items() if abs(effect) >= threshold}
 
 
 def top_k_set(effects: dict[Head, float], k: int) -> set[Head]:
-    """The `k` heads with the largest absolute effect."""
     ranked = sorted(effects, key=lambda h: abs(effects[h]), reverse=True)
     return set(ranked[:k])
 
@@ -85,8 +60,7 @@ def top_k_set(effects: dict[Head, float], k: int) -> set[Head]:
 def threshold_sweep(
     effects: dict[Head, float], thresholds: list[float], circuit: ModuleType = _default_circuit
 ) -> list[Comparison]:
-    """Score the discovered set at several cutoffs, so no single one has to be trusted."""
-    # Labels avoid the |...| notation on purpose: these strings are rendered into
+    # labels avoid the |...| notation on purpose
     # markdown table cells, where a literal pipe splits the column.
     return [
         compare(threshold_set(effects, t), label=f"abs(effect) >= {t:g}", circuit=circuit)
@@ -100,11 +74,7 @@ def miss_report(
     discovered: set[Head],
     circuit: ModuleType = _default_circuit,
 ) -> list[dict]:
-    """For each published head not discovered, what the run actually measured.
-
-    Reporting the measured value for every miss keeps a near-threshold miss from
-    being presented the same way as a head with no detectable effect at all.
-    """
+    """for each published head not discovered, what the run actually measured."""
     rows = []
     for head in sorted(circuit.ALL_HEADS - discovered):
         rows.append(

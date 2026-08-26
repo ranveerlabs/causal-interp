@@ -1,7 +1,7 @@
 {
   "docstring": {
     "circuit": "docstring",
-    "known_case": "real blind spot (Phase 7: the primary counterfactual hides routing heads)",
+    "known_case": "real blind spot (phase 7: the primary counterfactual hides routing heads)",
     "concordance": {
       "random_def": {
         "spearman_with_primary": 0.5685483870967742,
@@ -1175,7 +1175,7 @@
   },
   "greater_than": {
     "circuit": "greater_than",
-    "known_case": "noise (Phase 6: the primary counterfactual already recovered everything)",
+    "known_case": "noise (phase 6: the primary counterfactual already recovered everything)",
     "concordance": {
       "xx_mismatch": {
         "spearman_with_primary": 0.5522626798488868,

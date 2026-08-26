@@ -1,20 +1,4 @@
-"""Known-answer tests for the patching machinery.
-
-Run before trusting a result:
-    python scripts/check_patching.py
-
-Activation patching is easy to get subtly wrong — an off-by-one in a position
-index or a hook writing to the wrong head produces numbers that look entirely
-reasonable and mean nothing. The checks here are cases where the correct answer
-is known in advance from the construction of the experiment, not from the model:
-
-  * patching nothing must reproduce the corrupted run exactly (0.0)
-  * patching the whole residual stream at every position must reproduce the
-    clean run exactly (1.0), at every layer
-  * under `s2_swap` exactly one token differs, so clean and corrupted activations
-    are identical everywhere before S2 and patching there must be an *exact* zero
-  * the recorded semantic positions must land on the tokens they name
-"""
+"""Known-answer tests for the patching machinery."""
 
 from __future__ import annotations
 
@@ -38,8 +22,7 @@ from causal_interp.interventions import (
 from causal_interp.ioi import IOIDataset
 from causal_interp.model import load
 
-# Positions that necessarily precede S2 in every template, and so cannot differ
-# between the clean and corrupted runs under the single-token s2_swap corruption.
+# positions that necessarily precede S2 in every template
 PRE_S2_POSITIONS = ("IO", "IO+1", "S1", "S1+1")
 
 

@@ -1,19 +1,4 @@
-"""Phase 4 end to end: search for receiver specifications, then check the search.
-
-    python scripts/run_phase4_search.py            # full run
-    python scripts/run_phase4_search.py --quick    # smoke test
-
-The space and the budget were fixed in `results/PHASE4_SEARCH_SPACE.md`, committed
-before this script was written. Two exhaustive stage-A screens are run:
-
-- **semantic** — all 8 templates, positions labelled IO / S1 / S2 / END and so on.
-  Comparable with Phases 2-3, but those labels encode knowledge of the task.
-- **absolute** — one template, positions labelled `t0 … tN` with no meaning
-  attached. Nothing about the task's structure is supplied, which makes this the
-  one that actually tests whether the search can stand on its own.
-
-The published circuit is consulted only after both searches have produced output.
-"""
+"""phase 4 end to end: search for receiver specifications, then check the search."""
 
 from __future__ import annotations
 
@@ -43,19 +28,11 @@ PREREG_JSON = RESULTS_DIR / "phase3_preregistration.json"
 CACHE_KINDS = ("z", "mlp_out", "q", "k", "v")
 TOP_K_CONFIRM = 20  # fixed in the search-space document, before any result
 
-# How the rediscovery check labels an outcome. Fixed here rather than
-# pre-registered: the search-space document named the three outcomes but not the
-# margin, so this rule is stated openly and the raw ranks are reported beside it.
 AMBIGUITY_MARGIN = 0.20  # within 20% of the top score counts as not distinguished
 AMBIGUITY_MAX_RANK = 3
 
 
 def assert_search_is_blind() -> None:
-    """Fail loudly if the search module can see the answer key.
-
-    The claim that the search does not consult ground truth should be checkable
-    rather than promised, and this is the cheapest way to check it.
-    """
     source = (Path(__file__).resolve().parents[1] / "causal_interp" / "search.py").read_text(
         encoding="utf-8"
     )
@@ -63,7 +40,7 @@ def assert_search_is_blind() -> None:
         stripped = line.strip()
         if stripped.startswith(("import ", "from ")) and "ground_truth" in stripped:
             raise SystemExit(f"search.py imports ground truth: {stripped!r}")
-    print("search.py does not import ground_truth — ok")
+    print("search.py does not import ground_truth, ok")
 
 
 def run_screen(model, label: str, ds, positions, progress_every: int = 20) -> dict:
@@ -86,12 +63,7 @@ def run_screen(model, label: str, ds, positions, progress_every: int = 20) -> di
 
 
 def rediscovery_check(scores: dict[ReceiverSpec, float]) -> list[dict]:
-    """Where does the paper's named receiver spec sit in the search's own ranking?
-
-    Runs only after the search is complete. For each published head that has a
-    published receiver specification, rank that head's 21 candidate specs by the
-    search's score and report where the published one landed.
-    """
+    """where does the paper's named receiver spec sit in the search's own ranking?"""
     rows = []
     for head in sorted(ground_truth.ALL_HEADS):
         published = ground_truth.receiver_spec(head)
@@ -125,10 +97,7 @@ def rediscovery_check(scores: dict[ReceiverSpec, float]) -> list[dict]:
         if rank == 0:
             outcome = "agreement"
         elif published_score == 0.0:
-            # The corruption scheme makes this specification bit-identical between
-            # the two runs, so the screen cannot score it at all. Calling that a
-            # disagreement would blame the search for a property of the
-            # counterfactual it was handed.
+
             outcome = "unmeasurable"
         elif rank is not None and rank < AMBIGUITY_MAX_RANK and gap <= AMBIGUITY_MARGIN:
             outcome = "ambiguous"
@@ -150,16 +119,12 @@ def rediscovery_check(scores: dict[ReceiverSpec, float]) -> list[dict]:
 
 
 def semantic_of_absolute(ds: IOIDataset, index: int) -> str:
-    """What a bare token index turns out to be, used only to interpret results.
-
-    A label is reported only if it holds for every prompt, not just the first.
-    """
     labels = [name for name in POSITIONS if bool((ds.positions[name] == index).all())]
-    return "/".join(labels) if labels else "—"
+    return "/".join(labels) if labels else ", "
 
 
 def _load_scores(path: Path) -> dict:
-    """Rebuild a stage-A score table from the CSV a previous run wrote."""
+    """rebuild a stage-A score table from the CSV a previous run wrote."""
     scores: dict[ReceiverSpec, float] = {}
     with path.open(encoding="utf-8") as f:
         for row in csv.DictReader(f):
@@ -172,26 +137,20 @@ def _load_scores(path: Path) -> dict:
 
 
 def rebuild_report() -> int:
-    """Regenerate the report from a previous run's artefacts.
-
-    The stage-A grids are the expensive part and they are already on disk, so a
-    change to how the results are written should not cost another half hour of
-    GPU time. Nothing is recomputed; the rediscovery check is re-derived from the
-    stored scores, which is what picks up changes to how outcomes are labelled.
-    """
+    """Regenerate the report from a previous run's artefacts."""
     payload = json.loads((RESULTS_DIR / "phase4_results.json").read_text(encoding="utf-8"))
     semantic = _load_scores(RESULTS_DIR / "receiver_search_semantic.csv")
     absolute = _load_scores(RESULTS_DIR / "receiver_search_absolute.csv")
     if "absolute_labels" in payload:
         abs_labels = {int(k): v for k, v in payload["absolute_labels"].items()}
     else:
-        # A run from before the labels were stored separately: recover them from the
+        # a run from before the labels were stored separately
         # per-specification records, which carry the same mapping.
         abs_labels = {
             entry["index"]: entry["is_semantically"] for entry in payload.get("absolute_top", [])
         }
         payload["absolute_labels"] = {str(k): v for k, v in abs_labels.items()}
-    # The report reads tuple-keyed views; build them on copies so the payload that
+    # the report reads tuple-keyed views
     # gets written back stays JSON-serialisable.
     confirmations = [
         {
@@ -244,9 +203,6 @@ def main() -> int:
     semantic_ds = IOIDataset(model, n=n, corruption="s2_swap", seed=args.seed)
     semantic = run_screen(model, "semantic positions", semantic_ds, POSITIONS)
 
-    # One template *and* one name order: the two orders put the indirect object and
-    # the subject at swapped token indices, so mixing them would make a bare index
-    # mean two different things and the search would average over both.
     absolute_ds = IOIDataset(
         model, n=n, corruption="s2_swap", seed=args.seed,
         templates=(TEMPLATES[0],), orders=("ABB",),

@@ -1,23 +1,6 @@
-"""Phase 2 end to end: recover the IOI circuit by *path* patching, then score it
-against the same published circuit Phase 1 was scored against.
-
-    python scripts/run_phase2_paths.py                 # full run, both corruptions
-    python scripts/run_phase2_paths.py --quick         # small run for smoke-testing
-
-Phase 1 measured each head's total effect on the output and recovered 20 of 26
-published heads. The six it missed reach the logits only through another head,
-which total-effect patching cannot see. This run measures paths instead.
-
-Discovery is iterative and deliberately not seeded from the answer key. Round 0
-asks which heads affect the logits directly. Every later round takes the heads
-discovered in the round before as its receivers and asks which heads feed them.
-Nothing in `causal_interp/ground_truth.py` is consulted until the comparison at
-the end, and `causal_interp/comparison.py` remains pure set arithmetic.
-
-Writes to results/:
-    PHASE2_REPORT.md              the comparison (the deliverable)
-    phase2_results.json           every number the report is built from
-    path_effects_<scheme>_r<n>.csv per-round, per-sender effects
+"""
+phase 2 end to end: recover the IOI circuit by *path* patching, then score it
+against the same published circuit phase 1 was scored against.
 """
 
 from __future__ import annotations
@@ -54,13 +37,10 @@ from causal_interp.model import load
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
 PHASE1_JSON = RESULTS_DIR / "phase1_results.json"
 
-# Same pre-registered cutoff as Phase 1, so the two phases are scored alike.
+# same pre-registered cutoff as phase 1
 HEADLINE_THRESHOLD = 0.02
 THRESHOLD_SWEEP = [0.005, 0.01, 0.02, 0.03, 0.05, 0.10]
 
-# How many heads carry forward as the next round's receivers. Fixed in advance and
-# independent of the cutoff, so the chain cannot be lengthened or shortened by
-# choosing a threshold after seeing the results.
 CHAIN_WIDTH = 4
 
 CACHE_KINDS = ("z", "mlp_out", "q", "k", "v")
@@ -68,20 +48,14 @@ CACHE_KINDS = ("z", "mlp_out", "q", "k", "v")
 
 @dataclass(frozen=True)
 class Round:
-    """One step of the iterative search: what we ask, and where we ask it."""
+    """one step of the iterative search: what we ask, and where we ask it."""
 
     name: str
     question: str
-    receiver_input: str | None  # None => the logits themselves
+    receiver_input: str | None  # none => the logits themselves
     position: str
     expected: str  # the class the paper's account predicts, used only for narration
 
-
-# The receiver input and position for each round come from the paper's mechanistic
-# account of the circuit — S-inhibition heads act on name movers' *queries*, and so
-# on. That is prior knowledge about where to look, and it is why this is guided
-# rediscovery rather than blind search. Which heads turn up is not constrained:
-# every one of the 144 is swept as a sender in every round.
 ROUNDS: tuple[Round, ...] = (
     Round(
         name="direct effect on the logits",
@@ -115,7 +89,7 @@ ROUNDS: tuple[Round, ...] = (
 
 
 def run_scheme(model, corruption: str, n: int, seed: int) -> dict:
-    """The full iterative path-patching chain for one corruption scheme."""
+    """the full iterative path-patching chain for one corruption scheme."""
     print(f"\n{'=' * 72}\ncorruption scheme: {corruption}\n{'=' * 72}")
     ds = IOIDataset(model, n=n, corruption=corruption, seed=seed)
     baseline, _, _ = baseline_for(model, ds)
@@ -136,7 +110,7 @@ def run_scheme(model, corruption: str, n: int, seed: int) -> dict:
                     "expected": spec.expected, "position": spec.position,
                     "receivers": [], "effects": {}, "discovered": [], "halted": True,
                 })
-                print(f"  round {index}: no receivers carried forward — chain halted")
+                print(f"  round {index}: no receivers carried forward, chain halted")
                 break
             receivers = [
                 Receiver(layer=l, head=h, position=spec.position, input=spec.receiver_input)
@@ -158,7 +132,7 @@ def run_scheme(model, corruption: str, n: int, seed: int) -> dict:
         )
         print(f" {time.time() - t0:.0f}s")
 
-        # NaN marks senders that cannot reach every receiver, which the sweep leaves
+        # NaN marks senders that cant reach every receiver, which the sweep leaves
         # unmeasured rather than scoring against a smaller receiver set.
         effects: dict[Head, float] = {
             (l, h): float(grid[l, h])
@@ -169,9 +143,6 @@ def run_scheme(model, corruption: str, n: int, seed: int) -> dict:
         discovered = sorted(comparison.threshold_set(effects, HEADLINE_THRESHOLD))
         ranked = sorted(effects, key=lambda k: abs(effects[k]), reverse=True)
 
-        # The receiver-signal diagnostic: does the path deliver anything at its own
-        # endpoint, regardless of whether the logits move? Only meaningful when the
-        # receivers are real nodes, and only worth the passes for the top senders.
         signals: dict[Head, float] = {}
         if index > 0:
             for head in ranked[:CHAIN_WIDTH]:
@@ -219,19 +190,7 @@ def run_scheme(model, corruption: str, n: int, seed: int) -> dict:
 
 
 def previous_token_probe(model, results: dict[str, dict], n: int, seed: int) -> dict:
-    """A dedicated cross-scheme test for previous-token heads.
-
-    Neither scheme can answer this question inside its own chain. Under `s2_swap`
-    the S1+1 position is bit-identical between the two runs, so every measurement
-    there is an exact zero. Under `abc` the chain does not survive round 1, so it
-    never produces receivers to ask about.
-
-    So the two halves are taken from where each is sound: the receivers are the
-    heads the `s2_swap` chain discovered at round 2 — arrived at without consulting
-    the answer key — and the measurement runs on `abc`, the only scheme in which
-    S1+1 differs at all. Mixing schemes this way is a real caveat and is reported
-    as one, but the alternative is not measuring the question.
-    """
+    """A dedicated cross-scheme test for previous-token heads."""
     source = results["s2_swap"]
     round2 = next((r for r in source["rounds"] if r["index"] == 2 and not r["halted"]), None)
     if round2 is None or not round2["carried"]:
@@ -246,11 +205,6 @@ def previous_token_probe(model, results: dict[str, dict], n: int, seed: int) -> 
     clean_cache, _ = cache_for(model, ds.clean_tokens, CACHE_KINDS)
     corrupted_cache, _ = cache_for(model, ds.corrupted_tokens, CACHE_KINDS)
 
-    # A sweep can only test senders below its earliest receiver, so one receiver set
-    # tests one band of sender layers. Dropping the earliest receivers raises that
-    # ceiling. The probe is therefore run once per distinct receiver layer, which
-    # covers every sender the carried set can reach — a mechanical rule, not a
-    # hand-picked receiver list, so no knowledge of the answer enters here.
     variants = []
     for floor in sorted({l for l, _ in receiver_heads}):
         subset = [
@@ -281,10 +235,7 @@ def previous_token_probe(model, results: dict[str, dict], n: int, seed: int) -> 
             continue
 
         ranked = sorted(effects, key=lambda k: abs(effects[k]), reverse=True)
-        # Signal is measured for the strongest senders and, separately, for whichever
-        # published previous-token heads this ceiling makes testable — so their
-        # numbers appear whether or not they rank highly. Reporting, not discovery:
-        # nothing here feeds the discovered set.
+
         published_prev = [h for h in ground_truth.IOI_CIRCUIT["previous token"] if h in effects]
         signals = {}
         for head in list(dict.fromkeys(ranked[:5] + published_prev)):
@@ -318,11 +269,7 @@ def previous_token_probe(model, results: dict[str, dict], n: int, seed: int) -> 
 
 
 def phase1_discovered() -> dict[str, set[Head]]:
-    """Phase 1's discovered sets, read back rather than recomputed.
-
-    Reusing the committed artefact keeps the two phases comparable and avoids a
-    second six-minute sweep that would produce the same numbers.
-    """
+    """Phase 1's discovered sets, read back rather than recomputed."""
     if not PHASE1_JSON.exists():
         return {}
     data = json.loads(PHASE1_JSON.read_text(encoding="utf-8"))
@@ -335,13 +282,9 @@ def phase1_discovered() -> dict[str, set[Head]]:
     return out
 
 
-# -- output ---------------------------------------------------------------------
-
-
 def _fmt_signal(value: float | None) -> str:
-    """Render a receiver-signal reading, distinguishing 'not measured' from 'undefined'."""
     if value is None:
-        return "—"
+        return ", "
     if value != value:  # NaN: clean and corrupted coincide at the receiver
         return "*undefined*"
     return f"{value:+.3f}"
@@ -387,7 +330,7 @@ def write_report(
     out: list[str] = []
     a = out.append
 
-    a("# Phase 2 — IOI circuit recovery by path patching\n")
+    a("# Phase 2, IOI circuit recovery by path patching\n")
     a("Phase 1 measured what each attention head does to the output through every route at ")
     a("once, and recovered 20 of the 26 heads published in Wang et al. (2022), ")
     a("*Interpretability in the Wild* (arXiv:2211.00593). The six it missed reach the logits ")
@@ -408,22 +351,22 @@ def write_report(
     a("a path between them.\n")
     a("\nA head's q, k and v at token position *p* are computed from the residual stream at *p* ")
     a("alone, so only writes at *p* can reach them. Sender and receiver positions are therefore ")
-    a("always equal — not a simplification, an architectural constraint.\n")
+    a("always equal, not a simplification, an architectural constraint.\n")
 
     a("\n## 2. The search, round by round\n")
     a("Round 0 asks which heads reach the logits directly. Each later round takes the heads ")
-    a(f"found in the round before — the top {CHAIN_WIDTH} by absolute effect, a width fixed in ")
-    a("advance — and asks which heads feed them. The answer key is never used to choose ")
+    a(f"found in the round before, the top {CHAIN_WIDTH} by absolute effect, a width fixed in ")
+    a("advance, and asks which heads feed them. The answer key is never used to choose ")
     a("receivers, so a wrong turn in one round propagates rather than being silently corrected.\n")
     a("\nWhat the *receivers* are is prior knowledge: that S-inhibition heads act on name movers' ")
     a("queries, and so on, comes from the paper's account of the mechanism. Which *senders* turn ")
-    a("up is not constrained — all 144 heads are swept every round. This is guided rediscovery, ")
+    a("up is not constrained, all 144 heads are swept every round. This is guided rediscovery, ")
     a("not blind search, and Phase 3 would have to search receiver inputs too.\n")
 
     for scheme, res in results.items():
         a(f"\n### `{scheme}`\n")
         for entry in res["rounds"]:
-            a(f"\n**Round {entry['index']} — {entry['name']}.** {entry['question']}\n")
+            a(f"\n**Round {entry['index']} n/a {entry['name']}.** {entry['question']}\n")
             if entry["halted"]:
                 a("\n*Chain halted: the previous round carried no heads forward.*\n")
                 continue
@@ -437,7 +380,7 @@ def write_report(
                     f"**{head[0]}.{head[1]}**",
                     f"{entry['_effects'][head]:+.4f}",
                     _fmt_signal(entry["_signals"].get(head)),
-                    classify(head) or "— *not in published circuit*",
+                    classify(head) or ",  *not in published circuit*",
                 ])
             a(_table(rows, ["sender", "path effect on logits", "signal at receiver", "published class"]))
             a("\n")
@@ -450,7 +393,7 @@ def write_report(
         discovered = set(res["discovered"])
         combined_all |= discovered
         cmp_path = comparison.compare(discovered, f"path patching ({scheme})")
-        a(f"\n### `{scheme}` — path patching alone\n\n")
+        a(f"\n### `{scheme}`, path patching alone\n\n")
         a(_table(
             [[cls, f"{found}/{total}"] for cls, (found, total) in cmp_path.per_class.items()]
             + [["**total**", f"**{len(cmp_path.matches)}/{ground_truth.PUBLISHED_HEAD_COUNT}**"]],
@@ -477,14 +420,14 @@ def write_report(
             f"{cmp_p1.per_class[cls][0]}/{total}",
             f"{cmp_p2.per_class[cls][0]}/{total}",
             f"**{cmp_both.per_class[cls][0]}/{total}**",
-            f"+{gained}" if gained else "—",
+            f"+{gained}" if gained else ", ",
         ])
     rows.append([
         "**total**",
         f"{len(cmp_p1.matches)}/26",
         f"{len(cmp_p2.matches)}/26",
         f"**{len(cmp_both.matches)}/26**",
-        f"+{len(cmp_both.matches) - len(cmp_p1.matches)}" if len(cmp_both.matches) > len(cmp_p1.matches) else "—",
+        f"+{len(cmp_both.matches) - len(cmp_p1.matches)}" if len(cmp_both.matches) > len(cmp_p1.matches) else ", ",
     ])
     a("\n")
     a(_table(rows, ["published class", "Phase 1", "Phase 2", "combined", "gained"]))
@@ -496,7 +439,7 @@ def write_report(
             ["head", "published class"],
         ))
     else:
-        a("*None — all 26 published heads recovered.*")
+        a("*None, all 26 published heads recovered.*")
 
     a("\n\n**Discovered but not in the published circuit:**\n\n")
     if cmp_both.extras:
@@ -515,23 +458,23 @@ def write_report(
 
 
 def _previous_token_section(results: dict[str, dict], probe: dict) -> str:
-    """Report the previous-token result explicitly rather than letting it vanish."""
+    """report the previous-token result explicitly rather than letting it vanish."""
     lines = [
         "Phase 1 recovered 0 of the 2 published previous-token heads (2.2, 4.11) and blamed the ",
         "corruption scheme rather than the method. That explanation is now testable.\n",
         "\nNeither scheme can settle it inside its own chain. Under `s2_swap`, S1+1 is ",
-        "bit-identical between the two runs, so every measurement there is an exact zero — ",
+        "bit-identical between the two runs, so every measurement there is an exact zero, ",
         "visible in round 3 below, where all senders score 0.0000. Under `abc`, S1+1 does differ, ",
         "but the chain does not survive round 1 and never produces receivers to ask about.\n",
     ]
     for scheme, res in results.items():
         entry = next((r for r in res["rounds"] if r["index"] == 3), None)
         if entry is None or entry.get("halted"):
-            lines.append(f"\n- **`{scheme}` round 3** — chain halted before this round.\n")
+            lines.append(f"\n- **`{scheme}` round 3**, chain halted before this round.\n")
             continue
         largest = max((abs(v) for v in entry["_effects"].values()), default=0.0)
         lines.append(
-            f"\n- **`{scheme}` round 3** — {len(entry['discovered'])} of "
+            f"\n- **`{scheme}` round 3**, {len(entry['discovered'])} of "
             f"{entry.get('senders_tested', 0)} senders cleared the cutoff; "
             f"largest absolute effect {largest:.4f}.\n"
         )
@@ -545,8 +488,8 @@ def _previous_token_section(results: dict[str, dict], probe: dict) -> str:
         "Taking each half from where it is sound: the receivers are the heads the `s2_swap` chain "
         "discovered at round 2, arrived at without consulting the answer key, and the measurement "
         "runs on `abc`, the only scheme in which S1+1 differs at all. Mixing schemes is a real "
-        "caveat — the receivers were identified under one counterfactual and probed under another "
-        "— and it is the price of the question being answerable.\n\n"
+        "caveat, the receivers were identified under one counterfactual and probed under another "
+        ",  and it is the price of the question being answerable.\n\n"
         "A sweep can only test senders below its earliest receiver, so the probe is run once per "
         "distinct receiver layer. Dropping the earliest receivers raises the ceiling and brings "
         "deeper senders into range; running every variant is what stops the sender range from "
@@ -559,7 +502,7 @@ def _previous_token_section(results: dict[str, dict], probe: dict) -> str:
     for variant in probe["variants"]:
         lines.append(
             f"\n**Receivers at layer >= {variant['receiver_floor']}** "
-            f"({', '.join(f'`{r}`' for r in variant['receivers'])}) — "
+            f"({', '.join(f'`{r}`' for r in variant['receivers'])}), "
             f"senders testable: layers 0-{variant['max_sender_layer']}.\n\n"
         )
         ranked = sorted(variant["_effects"], key=lambda k: abs(variant["_effects"][k]), reverse=True)[:5]
@@ -569,7 +512,7 @@ def _previous_token_section(results: dict[str, dict], probe: dict) -> str:
                 f"**{l}.{h}**",
                 f"{variant['_effects'][(l, h)]:+.4f}",
                 _fmt_signal(variant["_signals"].get((l, h))),
-                classify((l, h)) or "— *not in published circuit*",
+                classify((l, h)) or ",  *not in published circuit*",
             ]
             for (l, h) in shown
         ]
@@ -601,7 +544,7 @@ def _previous_token_section(results: dict[str, dict], probe: dict) -> str:
         lines.append(
             f"\nThe two measurements disagree, and the disagreement is the finding. {names} "
             f"{'delivers' if one else 'each deliver'} a substantial share of the receiver's "
-            f"clean-vs-corrupted difference — the path is there and carries signal — while "
+            f"clean-vs-corrupted difference, the path is there and carries signal, while "
             f"{'its' if one else 'their'} effect on the output logit difference stays near zero.\n"
         )
     elif all_found:
@@ -616,14 +559,14 @@ def _previous_token_section(results: dict[str, dict], probe: dict) -> str:
         "\nThe two columns answer different questions, which is why both are reported. *Path "
         "effect on logits* asks whether the prediction moves; *signal at receiver* asks whether "
         "the path delivered anything at its own endpoint. A path can score full marks on the "
-        "second and near zero on the first, because every stage downstream of the receiver is "
-        "still running on corrupted input — the deeper a link sits in the chain, the more of its "
+        "second and near zero on the first, cuz every stage downstream of the receiver is "
+        "still running on corrupted input, the deeper a link sits in the chain, the more of its "
         "effect is absorbed before reaching the output.\n"
         "\nWhere that pattern holds, the defensible conclusion is that logit-difference path "
         "patching is the wrong instrument for that link, not that the link is absent. Making it "
         "measurable needs a metric defined at the receiver rather than at the output. That is a "
         "change of measurement, not of method, and it is left for a later phase rather than "
-        "folded into this one's headline number — the previous-token heads are counted as misses "
+        "folded into this one's headline number, the previous-token heads are counted as misses "
         "in every table above.\n"
     )
     return "".join(lines)
@@ -637,7 +580,7 @@ def _conclusions(results, cmp_p1, cmp_p2, cmp_both) -> str:
         + (
             f", up from {len(cmp_p1.matches)}/26.\n"
             if len(cmp_both.matches) > len(cmp_p1.matches)
-            else f" — unchanged from Phase 1's {len(cmp_p1.matches)}/26.\n"
+            else f", unchanged from Phase 1's {len(cmp_p1.matches)}/26.\n"
         ),
     ]
     if gained:
@@ -645,7 +588,7 @@ def _conclusions(results, cmp_p1, cmp_p2, cmp_both) -> str:
         for head in gained:
             by_class.setdefault(classify(head) or "not in circuit", []).append(f"{head[0]}.{head[1]}")
         detail = "; ".join(f"{cls}: {', '.join(hs)}" for cls, hs in by_class.items())
-        lines.append(f"\nHeads Phase 1 could not see and this phase can — {detail}.\n")
+        lines.append(f"\nHeads Phase 1 could not see and this phase can, {detail}.\n")
     else:
         lines.append(
             "\nNo head missed by Phase 1 was recovered here. That is a negative result and is "
@@ -657,7 +600,7 @@ def _conclusions(results, cmp_p1, cmp_p2, cmp_both) -> str:
         for head in cmp_both.misses:
             remaining.setdefault(classify(head) or "?", []).append(f"{head[0]}.{head[1]}")
         detail = "; ".join(f"{cls}: {', '.join(hs)}" for cls, hs in remaining.items())
-        lines.append(f"\nStill outstanding — {detail}. Section 4 covers the previous-token case.\n")
+        lines.append(f"\nStill outstanding, {detail}. Section 4 covers the previous-token case.\n")
     lines.append(
         "\n### What did improve\n"
         "\nHead count is not the only thing a circuit claim is made of, and two things moved that "
@@ -671,23 +614,21 @@ def _conclusions(results, cmp_p1, cmp_p2, cmp_both) -> str:
         "what total-effect patching swept up incidentally.\n"
     )
 
-    # The ordering result: what the chain found, round by round, without being told.
+    # The ordering result
     chain = results.get("s2_swap", {}).get("rounds", [])
     described = []
     for entry in chain:
         if entry.get("halted") or not entry.get("_effects"):
             continue
-        # A round where every effect is exactly zero has no ranking to report — its
-        # "top senders" would be an arbitrary tie-break, and quoting a hit rate off
-        # that would invent a result out of no signal at all.
+
         if max(abs(v) for v in entry["_effects"].values()) == 0.0:
-            described.append(f"round {entry['index']} — no signal (every sender exactly zero)")
+            described.append(f"round {entry['index']}, no signal (every sender exactly zero)")
             continue
         top = sorted(entry["_effects"], key=lambda k: abs(entry["_effects"][k]), reverse=True)[:4]
         in_circuit = sum(1 for h in top if classify(h))
         classes = sorted({classify(h) for h in top if classify(h)})
         described.append(
-            f"round {entry['index']} — {in_circuit}/4 top senders in the published circuit"
+            f"round {entry['index']} n/a {in_circuit}/4 top senders in the published circuit"
             + (f" ({', '.join(classes)})" if classes else "")
         )
     if described:
@@ -709,13 +650,13 @@ def _conclusions(results, cmp_p1, cmp_p2, cmp_both) -> str:
     )
     lines.append(
         "\n**One deliberate choice worth stating plainly.** Every head counted as discovered above "
-        "was discovered by its effect on the output logit difference — the same criterion Phase 1 "
+        "was discovered by its effect on the output logit difference, the same criterion Phase 1 "
         "used, kept identical so the two phases are comparable. The *signal at receiver* column "
         "repeatedly identifies published heads that the logit criterion misses: the previous-token "
         "heads in section 4 are the clearest case, and the S-inhibition heads under `abc` are "
         "another. Scoring discovery on that column instead would raise the recall number in this "
         "report.\n"
-        "\nIt was not done, because switching the success criterion after seeing which criterion "
+        "\nIt was not done, cuz switching the success criterion after seeing which criterion "
         "scores better is how a validation exercise stops validating anything. The signal metric "
         "is reported as a diagnostic, its disagreements with the logit metric are shown wherever "
         "they occur, and adopting it as a discovery criterion is left to a later phase where it "

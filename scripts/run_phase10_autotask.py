@@ -1,27 +1,4 @@
-"""Phase 10: build the task from example prompts, then run the existing pipeline on it.
-
-    python scripts/run_phase10_autotask.py --fixture frame_same --induction plan
-    python scripts/run_phase10_autotask.py --fixture frame_same --induction shape
-    python scripts/run_phase10_autotask.py --fixture frame_own  --induction plan
-    python scripts/run_phase10_autotask.py --fixture frame_own  --induction shape
-    python scripts/run_phase10_autotask.py --stage ksweep
-
-`--induction plan` is section 3 of `results/PHASE10_PLAN.md` as pre-registered, and is
-the phase's headline. `--induction shape` is the single repair fixed in
-`results/PHASE10_AMENDMENT.md` after step 1 measured what the pre-registered rule costs;
-it is post-hoc, it is labelled that way in every table it appears in, and it does not
-replace the headline.
-
-Nothing in this run is retuned. `n = 128`, `seed = 0`, the 0.02 cutoff from Phase 1, the
-size-matched top-7 from Phase 6 — every one of them the setting Phases 6 and 8 used, so
-the only thing that differs from Phase 6's greater-than run is that the task was induced
-from 32 lines a person typed instead of written by hand.
-
-**The answer key is not opened until every verdict above it has been decided.** The
-scoring section is last and is separated by a banner, exactly as in Phase 8, because the
-phase's question is whether an induced task locates the circuit — not whether it can be
-made to after someone checks.
-"""
+"""Phase 10: build the task from example prompts, then run the existing pipeline on it."""
 
 from __future__ import annotations
 
@@ -48,14 +25,12 @@ ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 FIXTURES = ROOT / "fixtures"
 
-# ---------------------------------------------------------------------------
-# Inherited constants. Not one of these was chosen for this phase.
-# ---------------------------------------------------------------------------
-N_PROMPTS = 128            # Phases 1, 6, 8
-SEED = 0                   # Phases 1, 6, 8
-HEADLINE_THRESHOLD = 0.02  # Phase 1
+# inherited constants. not one of these was chosen for this phase.
+N_PROMPTS = 128            # phases 1, 6, 8
+SEED = 0                   # phases 1, 6, 8
+HEADLINE_THRESHOLD = 0.02  # phase 1
 PRIMARY_METRIC = "logit_diff"
-SIZE_MATCHED_K = len(gt.ALL_HEADS)   # 7 — the published circuit's size
+SIZE_MATCHED_K = len(gt.ALL_HEADS)   # 7, the published circuit's sizeze
 
 K_SWEEP = (2, 4, 8, 16, 32)
 
@@ -64,9 +39,6 @@ INDUCTION_MODES = {
     "shape": induction.FILTER_SHAPE,
 }
 
-# Where each fixture's start-year token sits, for the *scoring* section only. This is
-# answer-key knowledge about the task — the same category as the published head list —
-# and it is used nowhere before the banner.
 FIXTURES_CONFIG = {
     "frame_same": {"file": FIXTURES / "greater_than_frame_same.txt", "yy_column": 8},
     "frame_own": {"file": FIXTURES / "greater_than_frame_own.txt", "yy_column": 9},
@@ -93,32 +65,17 @@ def read_fixture(name: str, limit: int | None = None) -> list[str]:
 
 
 def assert_firewall() -> None:
-    """Neither induced-task module may import an answer key.
-
-    Phases 4, 6 and 7 assert the same thing about `search.py`, and Phase 8 about
-    `agreement.py`. A task *built* with the published circuit in reach would prove
-    nothing about what can be built without one, so the check runs before the model
-    loads rather than being promised in a docstring.
-    """
     for name in ("induction", "autotask"):
         text = (ROOT / "causal_interp" / f"{name}.py").read_text(encoding="utf-8")
         assert "from causal_interp.ground_truth" not in text, f"{name}.py imports a ground truth"
         assert "import ground_truth" not in text, f"{name}.py imports a ground truth"
 
 
-# ---------------------------------------------------------------------------
-# Scoring — everything below here may consult the published circuit
-# ---------------------------------------------------------------------------
+# Scoring, everything below here may consult the published circuitit
 
 
 def task_validity(model, ds, yy_column: int) -> dict:
-    """Does the model actually perform greater-than on the *generated* clean prompts?
-
-    Answer-key territory, and run only in the scoring section. The induced task has no
-    idea what a correct continuation is; this asks how far its `clean_argmax_logprob`
-    target — the model's own clean prediction — is from the published task's notion of
-    a right answer.
-    """
+    """does the model actually perform greater-than on the *generated* clean prompts?"""
     with torch.no_grad():
         logits = model(ds.clean_tokens)
     rows = torch.arange(len(ds), device=logits.device)
@@ -140,7 +97,7 @@ def task_validity(model, ds, yy_column: int) -> dict:
 
 
 def score(effects: dict, best_positions: dict, label: str) -> dict:
-    """Size-matched and threshold comparisons against the published greater-than heads."""
+    """size-matched and threshold comparisons against the published greater-than heads."""
     size_matched = comparison.compare(
         comparison.top_k_set(effects, SIZE_MATCHED_K), f"{label} top-{SIZE_MATCHED_K}", circuit=gt
     )
@@ -175,9 +132,7 @@ def score(effects: dict, best_positions: dict, label: str) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Run B / C — full multi-scheme discovery on one induced task
-# ---------------------------------------------------------------------------
+# Run B / C, full multi-scheme discovery on one induced tasksk
 
 
 def run_discovery(fixture: str, mode: str, n: int, seed: int) -> int:
@@ -186,9 +141,9 @@ def run_discovery(fixture: str, mode: str, n: int, seed: int) -> int:
     filter_mode = INDUCTION_MODES[mode]
 
     print(f"\n{'#' * 72}")
-    print(f"# Phase 10 — induced greater-than task from fixtures/{fixture}")
+    print(f"# Phase 10, induced greater-than task from fixtures/{fixture}")
     print(f"# induction: {mode} ({filter_mode} filter)"
-          + ("   [PRE-REGISTERED]" if mode == "plan" else "   [POST-HOC — amendment]"))
+          + ("   [PRE-REGISTERED]" if mode == "plan" else "   [POST-HOC, amendment]"))
     print(f"# threshold {HEADLINE_THRESHOLD} (Phase 1), size-matched top-{SIZE_MATCHED_K} (Phase 6)")
     print(f"{'#' * 72}")
 
@@ -223,17 +178,16 @@ def run_discovery(fixture: str, mode: str, n: int, seed: int) -> int:
     )
 
     report = discovery.agreement[PRIMARY_METRIC]
-    print(f"\n{'=' * 72}\ncross-scheme agreement — activation patching\n{'=' * 72}")
+    print(f"\n{'=' * 72}\ncross-scheme agreement, activation patching\n{'=' * 72}")
     for scheme in report.schemes:
         power = report.power[scheme]
         run = discovery.runs[scheme]
         flag = "  LOW-POWER" if power.low_power else ""
-        span_flag = "   SPAN <= 0 — not normalizable" if run.span <= 0 else ""
+        span_flag = "   SPAN <= 0, not normalizable" if run.span <= 0 else ""
         print(f"  {scheme:20} found {len(report.per_scheme[scheme]):3}   "
               f"span {power.span:+8.3f}  power {power.power:.2f}{flag}{span_flag}")
 
-    # ---------------------------------------------------------------------
-    print(f"\n{'#' * 72}\n# ANSWER KEY OPENS HERE — nothing above consulted it\n{'#' * 72}")
+    print(f"\n{'#' * 72}\n# ANSWER KEY OPENS HERE, nothing above consulted it\n{'#' * 72}")
 
     primary_run = discovery.runs[built.primary]
     scored = {
@@ -333,18 +287,11 @@ def run_discovery(fixture: str, mode: str, n: int, seed: int) -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-# Run D — how many examples does the human have to write?
-# ---------------------------------------------------------------------------
+# Run D, how many examples does the human have to write?e?
 
 
 def run_ksweep(n: int, seed: int) -> int:
-    """Sweep the primary scheme only, for k example lines, k in K_SWEEP.
-
-    A recovery curve against the size of the human's input, not a circuit claim, which
-    is why it sweeps one scheme rather than every scheme — declared as an exception in
-    section 6 of the plan before it ran.
-    """
+    """Sweep the primary scheme only, for k example lines, k in K_SWEEP."""
     assert_firewall()
     started = time.time()
     model = load("gpt2-small")
@@ -416,21 +363,12 @@ def run_ksweep(n: int, seed: int) -> int:
 
 
 def run_pairs(n: int, seed: int) -> int:
-    """Post-hoc robustness check: does the k = 2 result depend on *which* two lines?
-
-    Not in the plan. Added because run D came out inverted — two examples recovered more
-    published heads than thirty-two — and a surprising number resting on one arbitrary
-    pair of sentences is worth trying to break before it is reported. Every pair below
-    is a contiguous slice of the fixture, chosen by position and not by result, and all
-    of them are reported.
-    """
+    """post-hoc robustness check: does the k = 2 result depend on *which* two lines?"""
     assert_firewall()
     started = time.time()
     model = load("gpt2-small")
     all_lines = read_fixture("frame_same")
-    # Fixed before running: five contiguous pairs spread across the file, plus the two
-    # pairs that straddle the tokenizer-odd lines 4 and 6, which are the interesting
-    # adversarial cases rather than the flattering ones.
+
     pairs = [(0, 1), (4, 5), (6, 7), (10, 11), (20, 21), (30, 31), (2, 3)]
     out: dict = {"meta": {"seed": seed, "n": n}, "rows": []}
 

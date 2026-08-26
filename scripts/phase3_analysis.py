@@ -1,14 +1,4 @@
-"""Phase 3 analysis: apply the pre-registered receiver-side threshold and report.
-
-Imported only by the main run of `run_phase3_receiver.py`, never by its
-`--preregister` path, so the step that fixes the threshold cannot reach any of
-this code.
-
-The output deliberately does not merge the two criteria into one score. A head
-found by its effect on the output and a head found by what it delivers to its
-receiver are answering different questions about what "part of the circuit"
-means, and collapsing them would hide the disagreement that is the result.
-"""
+"""Phase 3 analysis: apply the pre-registered receiver-side threshold and report."""
 
 from __future__ import annotations
 
@@ -168,23 +158,23 @@ def _write_report(
     a = out.append
     threshold = prereg["threshold"]
 
-    a("# Phase 3 — a pre-registered receiver-side criterion\n")
-    a("Phases 1 and 2 both scored a head as *found* by what it does to the output logit ")
-    a("difference, and both arrived at 20/26. Phase 2 also computed `path_signal` — how much ")
-    a("of a receiver's clean-vs-corrupted difference a path actually delivers — and noticed that ")
+    a("# phase 3, a pre-registered receiver-side criterion\n")
+    a("phases 1 and 2 both scored a head as *found* by what it does to the output logit ")
+    a("difference, and both arrived at 20/26. phase 2 also computed `path_signal`, how much ")
+    a("of a receiver's clean-vs-corrupted difference a path actually delivers, and noticed that ")
     a("this diagnostic scored several of the missing heads well.\n")
-    a("\nThat observation is exactly what makes it dangerous to adopt. This phase fixes the ")
+    a("\nThat observation is exactly what makes it dangerous to adopt. this phase fixes the ")
     a("threshold first, by a rule, in a step that computes no real measurement, and then applies ")
     a("it without adjustment.\n")
 
-    a("\n## 1. The pre-registration\n")
+    a("\n## 1. the pre-registration\n")
     a(f"\n> {prereg['rule']}\n")
-    a("\nThe null runs the identical procedure — same freezing, same path, same receiver, same ")
-    a("projection — but draws the sender's clean value from a *different* prompt in the batch. ")
-    a("The value carried is a real activation of the right kind; only its correspondence to the ")
-    a("prompt is destroyed. Whatever projection survives that is what the method manufactures ")
+    a("\nThe null runs the identical procedure, same freezing, same path, same receiver, same ")
+    a("projection, but draws the sender's clean value from a *different* prompt in the batch. ")
+    a("the value carried is a real activation of the right kind. only its correspondence to the ")
+    a("prompt is destroyed. whatever projection survives that is what the method manufactures ")
     a("from nothing, so the 99th percentile of it fixes the false-positive rate at about one in a ")
-    a("hundred, in advance, the same role Phase 1's 0.02 cutoff played.\n")
+    a("hundred, in advance, the same role phase 1's 0.02 cutoff played.\n")
     a("\n")
     a(_table(
         [
@@ -193,39 +183,39 @@ def _write_report(
             ["null mean |signal|", f"{prereg['null_mean']:.4f}"],
             ["null max |signal|", f"{prereg['null_max']:.4f}"],
             ["99th percentile (raw)", f"{prereg['raw_quantile']:.4f}"],
-            ["**threshold (rounded up, 2 s.f.)**", f"**{threshold}**"],
+            ["threshold (rounded up, 2 s.f.)", f"**{threshold}**"],
         ],
         ["null statistic", "value"],
     ))
     a(f"\n\nRecorded in `results/phase3_preregistration.json` and committed before the comparison ")
     a("below was run, so the ordering is visible in git history rather than merely claimed.\n")
 
-    a("\n### What this pre-registration is not\n")
-    a("It is not blind. Phase 2 printed a handful of real `path_signal` values — the ")
-    a("previous-token heads among them — and those numbers were known before this threshold was ")
-    a("derived. A genuinely blind pre-registration was no longer available once Phase 2 was ")
+    a("\n### What this pre-registration isnt\n")
+    a("it isnt blind. phase 2 printed a handful of real `path_signal` values, the ")
+    a("previous-token heads among them, and those numbers were known before this threshold was ")
+    a("derived. a genuinely blind pre-registration was no longer available once phase 2 was ")
     a("published.\n")
     a("\nWhat is claimed instead is narrower and checkable: the number was produced by a fixed ")
-    a("rule applied to a null distribution, not selected; the rule and its two free parameters ")
-    a("were written into the code before the null was run; and the number was not adjusted after ")
-    a("the comparison. A reader who suspects the rule itself was reverse-engineered should weigh ")
+    a("rule applied to a null distribution, not selected. the rule and its two free parameters ")
+    a("were written into the code before the null was run. and the number wasnt adjusted after ")
+    a("the comparison. a reader who suspects the rule itself was reverse-engineered should weigh ")
     a("the sensitivity table in section 5, which shows what a stricter per-group bar would do.\n")
 
-    a("\n## 2. What the criterion can and cannot see\n")
-    a("Two limits are structural and worth stating before any number.\n")
-    a("\n- **The output round is out of scope.** Round 0 asks what a head does to the logits ")
-    a("directly. Its receiver *is* the output, where a receiver-side measure and the logit ")
-    a("measure are the same quantity — there is no independent second opinion to take. Heads ")
-    a("found only by direct effect (the name movers) therefore cannot be found by this criterion, ")
+    a("\n## 2. What the criterion can and cant see\n")
+    a("two limits are structural and worth stating before any number.\n")
+    a("\n- **the output round is out of scope.** round 0 asks what a head does to the logits ")
+    a("directly. its receiver *is* the output, where a receiver-side measure and the logit ")
+    a("measure are the same quantity, there is no independent second opinion to take. heads ")
+    a("found only by direct effect (the name movers) therefore cant be found by this criterion, ")
     a("and the like-for-like comparison in section 4 restricts the logit criterion to the same ")
     a("rounds to keep that from reading as a failure.\n")
-    a("\n- **Under `s2_swap`, S1+1 is undefined rather than zero.** Clean and corrupted coincide ")
-    a("there, so the quantity this criterion normalizes by is exactly zero and the ratio does not ")
-    a("exist. Those cells are dropped, not scored as misses.\n")
+    a("\n- **under `s2_swap`, S1+1 is undefined rather than zero.** clean and corrupted coincide ")
+    a("there, so the quantity this criterion normalizes by is exactly zero and the ratio doesnt ")
+    a("exist. those cells are dropped, not scored as misses.\n")
 
     a("\n## 3. Results by receiver group\n")
     for group in per_group:
-        a(f"\n**{group['label']}** — receivers {', '.join(f'`{r}`' for r in group['receivers'])}, ")
+        a(f"\n**{group['label']}**, receivers {', '.join(f'`{r}`' for r in group['receivers'])}, ")
         a(f"senders at {group['position']}.\n\n")
         if not group["_signals"]:
             a("*No eligible sender with a defined measurement.*\n")
@@ -236,16 +226,16 @@ def _write_report(
                 f"**{l}.{h}**",
                 f"{group['_signals'][(l, h)]:+.3f}",
                 "yes" if abs(group["_signals"][(l, h)]) >= threshold else "no",
-                classify((l, h)) or "— *not in published circuit*",
+                classify((l, h)) or ",  *not in published circuit*",
             ]
             for (l, h) in ranked
         ]
         a(_table(rows, ["sender", "path signal", f"clears {threshold}", "published class"]))
         a("\n")
 
-    a("\n## 4. The two criteria, side by side\n")
-    a("These are two definitions of *found*, reported as two columns rather than one merged ")
-    a("score. A head that clears one and not the other is a genuine disagreement about what ")
+    a("\n## 4. the two criteria, side by side\n")
+    a("these are two definitions of *found*, reported as two columns rather than one merged ")
+    a("score. a head that clears one and not the other is a genuine disagreement about what ")
     a("counts as being part of the circuit, not noise to be averaged away.\n\n")
     rows = []
     for cls in ground_truth.IOI_CIRCUIT:
@@ -257,7 +247,7 @@ def _write_report(
             f"{cmp_signal.per_class[cls][0]}/{total}",
         ])
     rows.append([
-        "**total**",
+        "total",
         f"**{len(cmp_logit.matches)}/26**",
         f"**{len(cmp_logit_r1.matches)}/26**",
         f"**{len(cmp_signal.matches)}/26**",
@@ -277,7 +267,7 @@ def _write_report(
     a("\n\nThe middle column is the like-for-like one: same rounds, same receivers, same paths, ")
     a("scored by effect on the output instead of delivery to the receiver.\n")
 
-    a("\n### The six heads neither Phase 1 nor Phase 2 found\n\n")
+    a("\n### The six heads neither phase 1 nor phase 2 found\n\n")
     if previously_missing:
         rows = []
         for head in previously_missing:
@@ -285,8 +275,8 @@ def _write_report(
             rows.append([
                 f"{head[0]}.{head[1]}",
                 classify(head) or "?",
-                "—" if best is None else f"{best:+.3f}",
-                "not measurable" if best is None else ("**yes**" if abs(best) >= threshold else "no"),
+                ", " if best is None else f"{best:+.3f}",
+                "not measurable" if best is None else ("yes" if abs(best) >= threshold else "no"),
             ])
         a(_table(rows, ["head", "published class", "best path signal", f"clears {threshold}"]))
         recovered = [
@@ -298,9 +288,9 @@ def _write_report(
         if recovered:
             a(": " + ", ".join(f"`{l}.{h}` ({classify((l, h))})" for l, h in recovered) + ".\n")
         else:
-            a(". The criterion was fixed in advance and is reported as it fell.\n")
+            a(". the criterion was fixed in advance and is reported as it fell.\n")
     else:
-        a("*None — the earlier phases recovered all 26.*\n")
+        a("*None, the earlier phases recovered all 26.*\n")
 
     a("\n### Where the criteria disagree\n\n")
     only_logit = sorted(cmp_logit.discovered - cmp_signal.discovered)
@@ -308,28 +298,28 @@ def _write_report(
     both = sorted(cmp_logit.discovered & cmp_signal.discovered)
     a(_table(
         [
-            ["found by both", str(len(both)), ", ".join(f"`{l}.{h}`" for l, h in both) or "—"],
+            ["found by both", str(len(both)), ", ".join(f"`{l}.{h}`" for l, h in both) or "n/a"],
             ["logit only", str(len(only_logit)),
-             ", ".join(f"`{l}.{h}`" for l, h in only_logit) or "—"],
+             ", ".join(f"`{l}.{h}`" for l, h in only_logit) or "n/a"],
             ["receiver-side only", str(len(only_signal)),
-             ", ".join(f"`{l}.{h}`" for l, h in only_signal) or "—"],
+             ", ".join(f"`{l}.{h}`" for l, h in only_signal) or "n/a"],
         ],
         ["agreement", "count", "heads"],
     ))
     a("\n\nThe *logit only* set is dominated by heads whose receiver is the output, which the ")
-    a("receiver-side criterion cannot evaluate at all. The *receiver-side only* set is the ")
-    a("interesting one: paths that demonstrably deliver their content and still do not move the ")
+    a("receiver-side criterion cant evaluate at all. the *receiver-side only* set is the ")
+    a("interesting one: paths that demonstrably deliver their content and still dont move the ")
     a("prediction.\n")
 
-    a("\n## 5. Sensitivity: a stricter per-group bar\n")
-    a("Pooling the null across receiver groups controls the overall false-positive rate, which is ")
-    a("the right target for a single criterion. It also means a group with a wide null gets a bar ")
-    a("that is lenient relative to its own noise. Both thresholds were fixed by the same rule at ")
-    a("the same time, so the comparison below is not a second bite at the cherry.\n\n")
+    a("\n## 5. sensitivity: a stricter per-group bar\n")
+    a("pooling the null across receiver groups controls the overall false-positive rate, which is ")
+    a("the right target for a single criterion. it also means a group with a wide null gets a bar ")
+    a("that is lenient relative to its own noise. both thresholds were fixed by the same rule at ")
+    a("the same time, so the comparison below isnt a second bite at the cherry.\n\n")
     rows = []
     for entry in prereg["per_group"]:
         if entry["group_threshold"] is None:
-            rows.append([entry["label"], "—", "—", "—"])
+            rows.append([entry["label"], ", ", ", ", ", "])
             continue
         group = next((g for g in per_group if g["label"] == entry["label"]), None)
         survivors = []
@@ -341,11 +331,11 @@ def _write_report(
             entry["label"],
             f"{entry['max_abs_null']:.3f}",
             f"{entry['group_threshold']}",
-            ", ".join(f"`{l}.{h}`" for l, h in survivors) or "—",
+            ", ".join(f"`{l}.{h}`" for l, h in survivors) or "n/a",
         ])
     a(_table(rows, ["receiver group", "null max", "per-group threshold", "clears it"]))
 
-    # Which discoveries actually depend on pooling, computed rather than left to the
+    # which discoveries actually depend on pooling
     # reader to work out from the table.
     per_group_survivors: set[Head] = set()
     for entry in prereg["per_group"]:
@@ -363,22 +353,22 @@ def _write_report(
             f"`{l}.{h}`" + (f" ({classify((l, h))})" if classify((l, h)) else "")
             for l, h in pooled_only
         )
-        a(f"**Depends on pooling:** {listed} clears the pooled threshold but not its own group's. ")
-        a("Those discoveries should be read as weaker than the rest.\n")
+        a(f"**depends on pooling:** {listed} clears the pooled threshold but not its own group's. ")
+        a("those discoveries should be read as weaker than the rest.\n")
         pooled_only_published = [h for h in pooled_only if classify(h)]
         if pooled_only_published:
             a("\nSome are published heads, so part of the recall above does rest on the more ")
             a("lenient bar: " + ", ".join(f"`{l}.{h}`" for l, h in pooled_only_published) + ".\n")
         else:
-            a("\nNone of them is a published head. The lenience pooling introduces produced false ")
+            a("\nNone of them is a published head. the lenience pooling introduces produced false ")
             a("positives and none of the recoveries, so every published head found above also ")
             a("clears its own group's stricter bar.\n")
     else:
-        a("**Nothing depends on pooling.** Every head the pooled threshold discovers also clears ")
-        a("its own group's stricter bar, so the lenience pooling introduces did not manufacture ")
+        a("nothing depends on pooling. every head the pooled threshold discovers also clears ")
+        a("its own group's stricter bar, so the lenience pooling introduces didnt manufacture ")
         a("any of the results above.\n")
 
-    a("\n## 6. Two limitations carried forward, not fixed\n")
+    a("\n## 6. two limitations carried forward, not fixed\n")
     a(_limitations(phase2, per_group, threshold))
 
     a("\n## 7. What this phase settled\n")
@@ -403,14 +393,14 @@ def _conclusions(cmp_logit, cmp_logit_r1, cmp_signal, previously_missing, signal
     if recovered:
         listed = ", ".join(f"`{l}.{h}` ({classify((l, h))})" for l, h in recovered)
         lines.append(
-            f"The pre-registered criterion recovers {len(recovered)} of the "
-            f"{len(previously_missing)} heads neither earlier phase found: {listed}. The threshold "
+            f"the pre-registered criterion recovers {len(recovered)} of the "
+            f"{len(previously_missing)} heads neither earlier phase found: {listed}. the threshold "
             "was fixed before the measurement and not touched afterwards.\n"
         )
     else:
         lines.append(
-            f"The pre-registered criterion recovers none of the {len(previously_missing)} heads "
-            "neither earlier phase found. The threshold was fixed before the measurement and is "
+            f"the pre-registered criterion recovers none of the {len(previously_missing)} heads "
+            "neither earlier phase found. the threshold was fixed before the measurement and is "
             "reported as it fell.\n"
         )
     if below:
@@ -422,37 +412,37 @@ def _conclusions(cmp_logit, cmp_logit_r1, cmp_signal, previously_missing, signal
     if unmeasurable:
         listed = ", ".join(f"`{l}.{h}`" for l, h in unmeasurable)
         lines.append(
-            f"\nOutside the criterion's scope entirely: {listed} — these sit above every receiver "
+            f"\nOutside the criterion's scope entirely: {listed}, these sit above every receiver "
             "layer available in rounds 1 and later, so no path into the swept receivers reaches "
-            "them. Not measured and found wanting; not measured at all.\n"
+            "them. not measured and found wanting. not measured at all.\n"
         )
 
     lines.append(
-        f"\n**The criterion is noisier than the one it sits beside.** Precision "
+        f"\n**the criterion is noisier than the one it sits beside.** precision "
         f"{cmp_signal.precision:.2f} against {cmp_logit.precision:.2f} for the logit criterion. "
-        "It finds the previous-token heads and it also admits several heads with no published "
-        "role. Both facts are properties of the same fixed threshold and neither is reported "
+        "it finds the previous-token heads and it also admits several heads with no published "
+        "role. both facts are properties of the same fixed threshold and neither is reported "
         "without the other.\n"
     )
 
     lines.append(
-        "\n**The two criteria are not ranked, and the scores are not merged.** On the like-for-like "
-        f"comparison — same rounds, same receivers, same paths — the logit criterion finds "
+        "\n**the two criteria arent ranked, and the scores arent merged.** on the like-for-like "
+        f"comparison, same rounds, same receivers, same paths, the logit criterion finds "
         f"{len(cmp_logit_r1.matches)}/26 and the receiver-side criterion {len(cmp_signal.matches)}/26, "
         "but they disagree about *which* heads, not merely how many: previous-token heads appear "
-        "only in the second, several induction and name-mover heads only in the first. Adding them "
+        "only in the second, several induction and name-mover heads only in the first. adding them "
         "into a single recall number would report a larger figure while destroying the only "
         "genuinely new information this phase produced.\n"
     )
 
     lines.append(
-        "\n**What the disagreement means.** A head can deliver its content to the next stage of the "
+        "\n**what the disagreement means.** A head can deliver its content to the next stage of the "
         "circuit and still leave the prediction unmoved, and the two criteria simply take opposite "
-        "views of whether that counts as being part of the circuit. Neither view is wrong. Which "
+        "views of whether that counts as being part of the circuit. neither view is wrong. which "
         "one is appropriate depends on the question: explaining a behaviour argues for the output "
-        "criterion, mapping a mechanism argues for the receiver-side one. Phases 1 and 2 answered "
-        "only the first while appearing to answer both, and making that visible — rather than "
-        "raising a number — is what this phase was for.\n"
+        "criterion, mapping a mechanism argues for the receiver-side one. phases 1 and 2 answered "
+        "only the first while appearing to answer both, and making that visible, rather than "
+        "raising a number, is what this phase was for.\n"
     )
     return "".join(lines)
 
@@ -470,44 +460,44 @@ def _limitations(phase2: dict, per_group: list[dict], threshold: float) -> str:
             logit = round1["effects"].get(f"{head[0]}.{head[1]}")
             rows.append([
                 f"`{head[0]}.{head[1]}`",
-                "—" if logit is None else f"{logit:+.4f}",
+                ", " if logit is None else f"{logit:+.4f}",
                 f"{sig:+.3f}",
-                classify(head) or "— *not in published circuit*",
+                classify(head) or ",  *not in published circuit*",
             ])
         lines.append(
             "\nThe chain dies on the *logit* criterion, and the receiver-side numbers show it is "
-            "not because the paths are absent:\n\n"
+            "not cuz the paths are absent:\n\n"
         )
         lines.append(_table(
-            rows, ["sender", "logit effect (Phase 2)", "path signal", "published class"]
+            rows, ["sender", "logit effect (phase 2)", "path signal", "published class"]
         ))
         lines.append(
-            "\n\nThe paths deliver. The prediction does not move because `abc` replaces all three "
-            "names, so the tokens the logit difference is defined on — the clean prompt's IO and S "
-            "— are not in the corrupted prompt at all. Restoring a name mover's query makes it "
+            "\n\nThe paths deliver. the prediction doesnt move cuz `abc` replaces all three "
+            "names, so the tokens the logit difference is defined on, the clean prompt's IO and S "
+            ",  arent in the corrupted prompt at all. restoring a name mover's query makes it "
             "attend to the right *position*, but the token sitting there is a different name, so "
-            "there is no logit difference to restore. That is a property of the counterfactual, "
+            "there is no logit difference to restore. that is a property of the counterfactual, "
             "not of the circuit, and it is why `abc` contributes little past round 0 where the "
             "answer tokens still carry the measurement.\n"
         )
     else:
-        lines.append("\n*Not measurable from the available Phase 2 record.*\n")
+        lines.append("\n*Not measurable from the available phase 2 record.*\n")
 
     lines.append(
         "\n### (b) Receiver inputs are still supplied, not searched\n"
-        "\nEvery round in Phases 2 and 3 was told *where to look*: that S-inhibition heads act on "
+        "\nEvery round in phases 2 and 3 was told *where to look*: that S-inhibition heads act on "
         "name movers' queries, that duplicate-token information arrives as a value at S2, that "
-        "induction keys live at S1+1. Those choices come from the paper's account of the "
-        "mechanism. Which heads turn up was never constrained — all 144 are swept every round — "
+        "induction keys live at S1+1. those choices come from the paper's account of the "
+        "mechanism. which heads turn up was never constrained, all 144 are swept every round, "
         "but the question asked of them was.\n"
-        "\nThat is the line this project has not yet crossed. Everything so far is **guided "
+        "\nThat is the line this project hasnt yet crossed. everything so far is **guided "
         "rediscovery**: given the right question, the method finds the right components, and "
-        "finds them in the right causal order. The autonomous loop the README describes has to "
-        "generate the questions too — searching over receiver inputs, positions and depths "
-        "without being handed the mechanism first — and nothing here demonstrates that.\n"
-        "\nThe distinction matters most exactly where the project is aimed. On a circuit nobody "
+        "finds them in the right causal order. the autonomous loop the README describes has to "
+        "generate the questions too, searching over receiver inputs, positions and depths "
+        "without being handed the mechanism first, and nothing here demonstrates that.\n"
+        "\nThe distinction matters most exactly where the project is aimed. on a circuit nobody "
         "has published there is no paper to supply the receiver inputs, so a method that needs "
-        "them supplied does not yet transfer. Search over receiver specifications is the concrete "
+        "them supplied doesnt yet transfer. search over receiver specifications is the concrete "
         "next problem, and it is a larger one than either patching primitive: the space is the "
         "product of receiver head, input, and position, and unlike this phase there is no answer "
         "key to check the search against.\n"

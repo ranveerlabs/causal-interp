@@ -1,32 +1,4 @@
-"""Phase 3: a pre-registered receiver-side discovery criterion.
-
-    python scripts/run_phase3_receiver.py --preregister   # fix the threshold, write it down
-    python scripts/run_phase3_receiver.py                 # apply it, compare, report
-
-Phases 1 and 2 both scored a head as "found" by what it does to the output logit
-difference, and both landed on 20/26. Phase 2 also computed `path_signal` — how
-much of a receiver's clean-vs-corrupted difference a path actually delivers — and
-that diagnostic scored several of the missing heads well.
-
-Turning a diagnostic that was observed to look good into a discovery criterion is
-exactly the move that invalidates a validation exercise, so the threshold is fixed
-first, by a rule, in a separate step that never computes a real measurement:
-
-    threshold = 99th percentile of |path_signal| under a shuffled-source null,
-                rounded up to two significant figures
-
-The null runs the identical procedure but draws the sender's clean value from a
-*different* prompt in the batch. The path, the freezing, the receiver and the
-projection are all unchanged; only the correspondence between the value carried
-and the prompt it belongs to is destroyed. Whatever projection that still
-produces is what the method manufactures from nothing, and the 99th percentile
-fixes the false-positive rate at about one in a hundred before any real number is
-looked at.
-
-`--preregister` writes results/phase3_preregistration.json and exits. The main run
-refuses to start without it. Committing that file before the comparison exists is
-what makes the ordering auditable in git history rather than merely asserted.
-"""
+"""Phase 3: a pre-registered receiver-side discovery criterion."""
 
 from __future__ import annotations
 
@@ -59,9 +31,6 @@ RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
 PHASE2_JSON = RESULTS_DIR / "phase2_results.json"
 PREREG_JSON = RESULTS_DIR / "phase3_preregistration.json"
 
-# The pre-registered rule. These two numbers define the threshold; the threshold
-# itself is whatever they produce. Changing them after seeing a result would be
-# the thing this whole phase exists to avoid.
 NULL_QUANTILE = 0.99
 SIGNIFICANT_FIGURES = 2
 NULL_SEED = 20260815
@@ -71,7 +40,7 @@ CACHE_KINDS = ("z", "mlp_out", "q", "k", "v")
 
 @dataclass(frozen=True)
 class ReceiverSet:
-    """One receiver group to sweep senders against, recovered from Phase 2's chain."""
+    """one receiver group to sweep senders against, recovered from phase 2's chain."""
 
     label: str
     scheme: str
@@ -80,20 +49,13 @@ class ReceiverSet:
 
 
 def _parse_receiver(text: str) -> Receiver:
-    """'9.9.q@END' -> Receiver(layer=9, head=9, input='q', position='END')."""
     node, position = text.split("@")
     layer, head, kind = node.split(".")
     return Receiver(layer=int(layer), head=int(head), position=position, input=kind)
 
 
 def receiver_sets() -> list[ReceiverSet]:
-    """The receiver groups Phase 2 arrived at, read back from its committed results.
-
-    Reusing them rather than re-deriving them keeps this phase asking about the
-    same paths Phase 2 asked about, so the two criteria differ only in how a
-    result is scored. It also means the receivers still come from Phase 2's
-    non-circular chain and not from the answer key.
-    """
+    """The receiver groups phase 2 arrived at, read back from its committed results."""
     if not PHASE2_JSON.exists():
         raise SystemExit(f"missing {PHASE2_JSON}; run scripts/run_phase2_paths.py first")
     data = json.loads(PHASE2_JSON.read_text(encoding="utf-8"))
@@ -124,7 +86,6 @@ def receiver_sets() -> list[ReceiverSet]:
 
 
 def _contexts(model, n: int, seed: int) -> dict[str, tuple]:
-    """Dataset and caches per corruption scheme, built once and shared."""
     out = {}
     for scheme in ("s2_swap", "abc"):
         ds = IOIDataset(model, n=n, corruption=scheme, seed=seed)
@@ -155,7 +116,6 @@ def _sweep(model, contexts, group: ReceiverSet, permutation) -> dict[Head, float
 
 
 def _round_up_sigfigs(value: float, digits: int) -> float:
-    """Round up so the threshold never claims more precision than the null supports."""
     if value <= 0:
         return 0.0
     import math
@@ -166,12 +126,8 @@ def _round_up_sigfigs(value: float, digits: int) -> float:
 
 
 def preregister(model, n: int, seed: int) -> int:
-    """Compute the null, derive the threshold, write it down, and stop.
-
-    Deliberately computes no real measurement. Nothing in this function can see
-    how any head scores on the actual data.
-    """
-    print("PRE-REGISTRATION — null distribution only, no real measurements\n")
+    """compute the null, derive the threshold, write it down, and stop."""
+    print("PRE-REGISTRATION, null distribution only, no real measurements\n")
     groups = receiver_sets()
     contexts = _contexts(model, n, seed)
     permutation = derangement(n, seed=NULL_SEED)
@@ -186,11 +142,7 @@ def preregister(model, n: int, seed: int) -> int:
         pooled.extend(values)
         print(f" {time.time() - t0:.0f}s  n={len(values)}"
               + (f"  max|null|={max(values):.4f}" if values else "  (no eligible senders)"))
-        # The same rule applied within each group. Fixed here, alongside the primary,
-        # so both are on record before any real measurement. The pooled threshold is
-        # the pre-registered criterion; these are reported next to it because pooling
-        # necessarily gives a group with a wide null a lenient bar relative to its own
-        # noise, and a reader should be able to see which discoveries depend on that.
+
         group_raw = (
             float(torch.quantile(torch.tensor(sorted(values)), NULL_QUANTILE)) if values else None
         )
@@ -273,8 +225,7 @@ def main() -> int:
             "on record before the comparison it will be judged by."
         )
     prereg = json.loads(PREREG_JSON.read_text(encoding="utf-8"))
-    # A threshold calibrated on a different dataset size is not the threshold that
-    # was pre-registered for this run, and quietly reusing it would defeat the point.
+    # was pre-registered for this run
     if prereg["n_prompts"] != n or prereg["dataset_seed"] != args.seed:
         raise SystemExit(
             f"pre-registration was computed for n={prereg['n_prompts']}, "
