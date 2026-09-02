@@ -100,7 +100,7 @@ python scripts/phase11_analysis.py
 ```
 
 seeded, and they chain, so on a clean checkout run them in order. `--report-only` gets you
-the writeup without redoing the sweep. on 7 and 8 it'll clobber a stale git diff though.
+the writeup without redoing the sweep. on 7 and 8 itll clobber a stale git diff though.
 
 `search.py`, `pipeline.py`, `agreement.py`, `schemes.py`, `induction.py` and
 `autotask.py` cant import `ground_truth`. the runners check at startup.
