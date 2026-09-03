@@ -35,6 +35,30 @@ replication sd tracks effect size in all nine rows and published heads sit somew
 between 2.4x and 17.5x above the rest, so dividing by it squashes the top of the ranking.
 long version in [SYNTHESIS.md](SYNTHESIS.md), numbers in [results/](results/)
 
+so phase 12 stopped building statistics on top of patching scores and tried a different
+method entirely. [causal scrubbing](https://www.alignmentforum.org/posts/JvZhhzycHu2Yd57RN/causal-scrubbing-a-method-for-rigorously-testing),
+resample-ablate everything outside a claimed circuit, run on real prompts, no counterfactual
+pair anywhere. The published 26 pass, recovering 1.02 of the logit difference. so do 25 of
+200 random 26-head sets, and 8 of those beat it. drop 12 of the 26 and it still scores 0.911
+
+one bit of it did something new. leave-one-out from the published circuit puts the
+previous-token heads `4.11` and `2.2` first and third, and both score about 0.0025 under
+either of phase 1's counterfactuals:
+
+```
+head    loo drop patch |eff| p1 found  class
+4.11       0.316      0.0028       NO  previous token
+9.9        0.205      0.7820      yes  name mover
+2.2        0.177      0.0023       NO  previous token
+8.10       0.126      0.2533      yes  s-inhibition
+...
+10.7      -0.375      0.5114      yes  negative name mover
+```
+
+Spearman against patching magnitude is 0.240 across all 144 heads, so its looking somewhere
+else. twelve phases in thats the first signal here that disagrees w magnitude in a direction
+the answer key backs up. one circuit, six heads, untested on the other two
+
 ## gotchas
 
 - all 576 head-position cells before S2 come out zero under `s2_swap`. identical inputs
@@ -45,6 +69,9 @@ long version in [SYNTHESIS.md](SYNTHESIS.md), numbers in [results/](results/)
   `year 11245 to the year 14`
 - 2 prompts recover 6/7, 32 recover 3/7. more data made it worse
 - both circuits on one 8GB card slowed each other ~3x. one at a time
+- Smart App Control blocks `pyarrow`'s unsigned `lib.cp312-win_amd64.pyd`, and
+  `transformer_lens` reaches it through `datasets` at import. `check_env.py` says
+  `transformer_lens is not installed` which is not what happened
 
 ## setup
 
@@ -97,6 +124,10 @@ python scripts/run_phase10_autotask.py --stage pairs
 python scripts/run_phase11_resample.py --circuit docstring       # ~12 min
 python scripts/run_phase11_resample.py --circuit greater_than    # ~50 min
 python scripts/phase11_analysis.py
+
+python scripts/run_phase12_scrub.py                             # ~80 min
+python scripts/phase12_report.py
+python scripts/phase12_posthoc.py
 ```
 
 seeded, and they chain, so on a clean checkout run them in order. `--report-only` gets you

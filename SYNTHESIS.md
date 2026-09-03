@@ -1,6 +1,6 @@
-# causal-interp, eleven phases, one retrospective
+# causal-interp, twelve phases, one retrospective
 
-what eleven pre-registered phases actually established, what they didnt, and what the
+what twelve pre-registered phases actually established, what they didnt, and what the
 failures have in common. every number is quoted from a committed phase report in
 [`results/`](results/). nothing re-derived, nothing rounded from memory, and the report
 each figure came from is named.
@@ -14,7 +14,7 @@ are where it lives.
 
 This set out to build a system that discovers and causally validates mechanisms in
 neural networks. Aimed eventually at models more capable than the people checking them.
-eleven phases in, it splits pretty cleanly:
+twelve phases in, it splits pretty cleanly:
 
 anything that can be settled by measuring a magnitude is mechanized, anything that needs
 relevance judged still needs a human or an answer key
@@ -37,6 +37,12 @@ sampling noise, not too little data, not a missing confidence interval. §2 and 
 updated to match, and the recommendation is blunt now: treat this as an open problem
 instead of hunting around for a fix inside the current pipeline.
 
+phase 12 then took the one exit phase 11 left open and tried a method from outside the
+paradigm, causal scrubbing. the published IOI circuit passes its own scrub, and the per-head
+signal that falls out is near-orthogonal to activation patching while still separating
+published heads at AUC 0.799. the recommendation stands anyway, sufficiency under resample
+ablation turns out to be a property most head sets have. §2 and §5 carry the detail.
+
 ---
 
 ## 1. what was validated, and how solidly
@@ -56,6 +62,7 @@ instead of hunting around for a fix inside the current pipeline.
 | [9](results/PHASE9_REPORT.md) | can it tell a real blind spot from noise? | partial. a better criterion, not a discriminator | strong negative, w a real holdout |
 | [10](results/PHASE10_REPORT.md) | can the task be induced instead of written? | 3/7 pre-registered (5/7 repaired) vs hand-built 6/7 | honest negative. 1 of 8 predictions held |
 | [11](results/PHASE11_REPORT.md) | do findings survive resampling, and does that separate them? | no, and stability scores below magnitude. but discovery replicates 10/10 | strong negative with a measured mechanism. 6 of 9 predictions held |
+| [12](results/PHASE12_REPORT.md) | does causal scrubbing grade a circuit without an answer key? | published 26 passes at 1.02, so do 12.5% of random 26-head sets | strong negative at circuit level, one real positive at head level. 5 of 9 predictions held |
 
 ### the four things that held up
 
@@ -170,7 +177,7 @@ that difference between reversing and damaging, most of section 2 is abt it
 
 ---
 
-## 2. four investigations, one wall
+## 2. five investigations, two walls
 
 phases 9 and 10 went at different problems w different machinery and produced the same
 shape of failure. the convergence is sort of the finding on its own. it reads more like
@@ -179,7 +186,9 @@ Two later efforts, both written after this section originally said "two investig
 tested the two most obvious escape routes and closed them. the [scheme-level
 re-analysis](results/SCHEME_LEVEL_NOTE.md) moved all twenty of phase 9's signals to the unit
 that actually matters, and phase 11 tested the one class of evidence none of them could
-compute, replication. Both are below, after the two original ones
+compute, replication. Both are below, after the two original ones. Phase 12 is the fifth and
+sits apart from the other four. it changed method rather than statistic and ran into a
+different obstacle, hence two walls in the heading
 
 ### phase 9, given several counterfactuals that disagree, which disagreement matters?
 
@@ -396,11 +405,45 @@ property of the intervention, and the quantity needed is a relation between the
 intervention and the behaviour. nothing in the pipeline's outputs encodes the second term of
 that relation
 
+### what phase 12 adds, from outside the paradigm
+
+[phase 12](results/PHASE12_REPORT.md) is the only one here that isnt an activation-patching
+experiment. causal scrubbing (Redwood, [Chan et al. 2022](https://www.alignmentforum.org/posts/JvZhhzycHu2Yd57RN/causal-scrubbing-a-method-for-rigorously-testing))
+resample-ablates everything outside a claimed circuit and runs the model on real prompts, so
+it never builds a counterfactual pair at all. that is exactly the missing slot named at the
+end of the paragraph above, a quantity relating an intervention to the behaviour rather than
+describing the intervention.
+
+the method does fill it. the published IOI circuit passes its own scrub, recovering 1.022 of
+the logit difference and 0.870 of the KL against a floor where every head is resampled. its
+per-head signal, one head added to an empty hypothesis, separates published from unpublished
+at AUC 0.799 with permutation p = 5.0e-5, computed with no answer key and no counterfactual.
+
+discriminating is where it stops. 25 of 200 uniformly random 26-head sets clear the same bar
+the published circuit clears and 8 beat it outright, dropping 12 of the 26 published heads
+still scores 0.911 with 30% of those deletions landing above the intact circuit, adding
+random heads never hurts, a 3-head set scores 0.968. a very large family of head sets is
+sufficient under resample ablation, so a pass narrows the space of hypotheses hardly at all.
+
+this is a different ceiling from the four before it and shouldnt get filed with them. the
+other four failed on the statistic, and phase 11 measured the mechanism, replication noise
+scaling with effect size. here the question itself is too weak. what would sharpen it is a
+hypothesis with internal structure to condition on, causal scrubbing's interpretation graph,
+which phase 12 deliberately left out.
+
+one result did come back positive. leave-one-out from the published circuit ranks the
+previous-token heads `4.11` and `2.2` first and third of all 26, and both score about 0.0025
+under either of phase 1's counterfactuals, one of which is the `s2_swap` scheme that returns
+a floating-point exact zero everywhere before S2. Spearman between the scrub's head ranking
+and patching magnitude is 0.240 across all 144 heads. Twelve phases in thats the first
+answer-key-free signal here that disagrees with magnitude in a direction the answer key
+confirms, and its untested on greater-than and docstring.
+
 ---
 
 ## 3. whats still human, and looks like staying that way
 
-these ones specifically, across all eleven phases.
+these ones specifically, across all twelve phases.
 
 ### Still human, untouched
 
@@ -408,7 +451,7 @@ these ones specifically, across all eleven phases.
 |---|---|---|
 | the behavioural hunch | every phase | picking which behaviour to study was never attempted. phase 5 passed on it bcuz a weak version "would produce something that looked like progress without being any", and phase 10 deliberately attacked the rung below this one. |
 | where to cut the prompt | phase 10 | the 64 fixture lines all stop right before the answer token. nothing in the induction recovers that decision from them, its baked into the examples a person typed. |
-| which counterfactual to trust | phases 5, 7, 8, 9, 10 | section 2. this is the load-bearing one. |
+| which counterfactual to trust | phases 5, 7, 8, 9, 10 | section 2. this is the load-bearing one. phase 12 sidesteps it by using a method with no counterfactual and hits a different limit instead. |
 | whether a flag matters | phases 8, 9, 11 | the pipeline flags counterfactual-dependent heads unprompted and on two of three circuits the flag still needs a human w an answer key. flag precision runs 50% / 0% / 26%. phase 11 adds that this isnt a noise problem. |
 
 ### was human, now mechanized, and what it cost
@@ -422,6 +465,7 @@ these ones specifically, across all eleven phases.
 | task template and slot vocabularies | phase 10 | real. 3/7 pre-registered, 5/7 repaired, against a hand-built 6/7 |
 | a second counterfactual per task | phase 8 (forced), phase 10 (derived) | phase 8's greater-than alternate was authored by this project and is labelled `authored` not `published` everywhere it shows up |
 | knowing the measurements replicate | phase 11 | 1.26 GPU-hours, and the answer was yes, so no fix lives here |
+| grading a circuit against behaviour, no answer key | phase 12 | 1.34 GPU-hours. the grade exists and passes 12.5% of random head sets, so its not usable as a filter yet |
 
 ### human in a way thats easy to miss
 
@@ -478,7 +522,7 @@ so, roughly: built and validated an instrument. didnt build the thing that would
 trust its readings on a target where nobody can check them. the instrument is worth having,
 several of its components were genuinely uncertain and theyre demonstrated now. but the gap
 between it and the stated aim isnt a matter of more phases of the same kind, and nothing in
-1-11 should be read as evidence its closing.
+1-12 should be read as evidence its closing.
 
 the prediction record is bad and its public, which is worth something on its own. phase
 1's central hypothesis, that path patching
@@ -512,7 +556,8 @@ after phase 11 the accumulated evidence supports calling this an open problem in
 continuing to hunt for a fix inside the current pipeline's paradigm. four attempts, four
 different statistics, four different objects, one failure, and the fourth returned a
 reason instead of another empty search. the two things that would change this are at the
-end of this section and neither is a cleverer statistic.
+end of this section and neither is a cleverer statistic. phase 12 has since tested the
+second of them, and its annotated in place below.
 
 more threshold tuning inside the current framework is ruled out. phase 9 tuned a scalar
 criterion over head effects and produced a defensible rule thats not a discriminator. Phase
@@ -609,6 +654,18 @@ over the existing outputs:
   between the intervention and the behaviour and the architecture has no slot holding the
   second term. adding one is a design change
 
+  > Built, in [phase 12](results/PHASE12_REPORT.md), and it doesnt change this
+  > recommendation. causal scrubbing has the slot, it grades a hypothesis against real
+  > behaviour on real prompts with no counterfactual anywhere, and the published IOI circuit
+  > passes at 1.022 of the logit difference. the trouble is that so does most of the space.
+  > 12.5% of random 26-head sets clear the same bar, dropping 12 of the 26 published heads
+  > still scores 0.911, and a 3-head set scores 0.968. Sufficiency under resample ablation
+  > is too weak a property to grade with. what the phase does buy is a head-level signal at
+  > AUC 0.799 that correlates with patching magnitude at only 0.240, so the second term of
+  > that relation is now measurable even if it isnt yet decisive. the next version of this
+  > experiment is a real interpretation graph, scrubbing edges instead of nodes so
+  > equivalence classes get conditioned on. thats an implementation, not another statistic.
+
 the validation problem is the real obstacle and it should get stated before any of the
 above is attempted. every phase so far validated against a published head list. what needs
 validating now is a ranking rule over experiments, and a published circuit checks that only
@@ -624,7 +681,7 @@ which is what phase 9 produced and said so.
 evidence for everything above:
 
 - per-phase reports: [`results/PHASE1_REPORT.md`](results/PHASE1_REPORT.md) thru
-  [`results/PHASE11_REPORT.md`](results/PHASE11_REPORT.md)
+  [`results/PHASE12_REPORT.md`](results/PHASE12_REPORT.md)
 - the one re-analysis thats not a phase:
   [`results/SCHEME_LEVEL_NOTE.md`](results/SCHEME_LEVEL_NOTE.md)
 - Pre-registrations, committed before the code they judge:
@@ -637,7 +694,8 @@ evidence for everything above:
   [`PHASE10_PLAN.md`](results/PHASE10_PLAN.md) +
   [`PHASE10_CHARACTERIZATION.md`](results/PHASE10_CHARACTERIZATION.md) +
   [`PHASE10_AMENDMENT.md`](results/PHASE10_AMENDMENT.md),
-  [`PHASE11_PLAN.md`](results/PHASE11_PLAN.md)
+  [`PHASE11_PLAN.md`](results/PHASE11_PLAN.md),
+  [`PHASE12_PLAN.md`](results/PHASE12_PLAN.md)
 - the full narrative, phase by phase, w setup and run instructions:
   [`README.md`](README.md)
 
@@ -651,4 +709,5 @@ human contribution to that phase can be counted instead of described. and phase 
 separates measurement from analysis into different files, `run_phase11_resample.py` asserts
 it imports no answer key of itself as well as of the causal core, and `phase11_analysis.py`
 writes its blind half to disk before its scoring half is entered, so the ordering is a
-property of the file layout and the commit history
+property of the file layout and the commit history. `scrubbing.py` joins that list in phase
+12 and `run_phase12_scrub.py` checks its source text for the string at startup
