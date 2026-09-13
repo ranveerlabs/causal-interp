@@ -13,10 +13,9 @@ there
 - [How does GPT-2 compute greater-than?](https://arxiv.org/abs/2305.00586)
 - [a circuit for Python docstrings](https://www.lesswrong.com/posts/u6KXXmKFbXfWzoAXn/a-circuit-for-python-docstrings-in-a-4-layer-attention-only)
 
-docstring sits at 3/6. seems to be the counterfactual. The published one swaps out the
-answer token, so heads whose whole job is routing attention have nothing left to move. a
-different counterfactual gets 5/6, same code, same model. only worked that out from reading
-the paper though, which is kind of the problem.
+the docstring result, 3/6, seems to come from the counterfactual. The published one swaps out the
+answer token, leaving routing heads nothing to move. a different counterfactual
+gets 5/6 with the same code and model. i only found that by reading the paper
 
 three goes at getting the pipeline to spot that on its own. none of them worked. last one
 resampled the whole thing ten times:
@@ -35,8 +34,7 @@ replication sd tracks effect size in all nine rows and published heads sit somew
 between 2.4x and 17.5x above the rest, so dividing by it squashes the top of the ranking.
 long version in [SYNTHESIS.md](SYNTHESIS.md), numbers in [results/](results/)
 
-so phase 12 stopped building statistics on top of patching scores and tried a different
-method entirely. [causal scrubbing](https://www.alignmentforum.org/posts/JvZhhzycHu2Yd57RN/causal-scrubbing-a-method-for-rigorously-testing),
+in phase 12 i tried [causal scrubbing](https://www.alignmentforum.org/posts/JvZhhzycHu2Yd57RN/causal-scrubbing-a-method-for-rigorously-testing),
 resample-ablate everything outside a claimed circuit, run on real prompts, no counterfactual
 pair anywhere. The published 26 pass, recovering 1.02 of the logit difference. so do 25 of
 200 random 26-head sets, and 8 of those beat it. drop 12 of the 26 and it still scores 0.911
@@ -55,14 +53,15 @@ head    loo drop patch |eff| p1 found  class
 10.7      -0.375      0.5114      yes  negative name mover
 ```
 
-Spearman against patching magnitude is 0.240 across all 144 heads, so its looking somewhere
-else. twelve phases in thats the first signal here that disagrees w magnitude in a direction
-the answer key backs up. one circuit, six heads, untested on the other two
+Spearman against patching magnitude is 0.240 across all 144 heads. this was the
+first time in twelve phases i got a signal that disagreed with magnitude and
+matched the answer key. thats only one circuit and six heads, i havent tested
+it on the other two
 
 ## gotchas
 
 - all 576 head-position cells before S2 come out zero under `s2_swap`. identical inputs
-  either side, so, yeah. Spent a while assuming the sweep was broken
+  either side. Spent a while assuming the sweep was broken
 - `mlp_out` on a model with no MLPs. 28 zeros, no error, nothing complains
 - 2 of the 32 fixture prompts had years GPT-2 splits as `[" 150", "9"]` and not
   `[" 15", "09"]`. century columns quietly stopped tying, and prompts started coming out as
