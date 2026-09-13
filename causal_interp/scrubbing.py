@@ -1,6 +1,3 @@
-"""causal scrubbing, Chan et al. 2022. resample-ablate everything outside a hypothesis and
-run on clean prompts. no counterfactual pair anywhere."""
-
 from __future__ import annotations
 
 import zlib
@@ -20,13 +17,6 @@ SOURCE_SEED_BASE = 1000
 
 
 class ResampleSources:
-    """the alternative prompts a scrub draws its replacement activations from.
-
-    row r of every IOIDataset gets template r % 8, so a source at a different seed shares
-    the clean row's template, length and position map and differs only in names, place and
-    object. splicing by absolute token index is only legal because of that.
-    """
-
     def __init__(
         self,
         model: HookedTransformer,
@@ -81,7 +71,6 @@ def keep_mask(
     heads: Iterable[Head],
     positions: dict[Head, str] | None = None,
 ) -> Tensor:
-    """(n_layers, b, seq, n_heads) bool, True where the activation survives untouched."""
     n_layers, n_heads = model.cfg.n_layers, model.cfg.n_heads
     b, seq = ds.clean_tokens.shape
     device = ds.clean_tokens.device

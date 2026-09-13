@@ -1,5 +1,3 @@
-"""Discovery under every registered counterfactual scheme, the default path."""
-
 from __future__ import annotations
 
 import math
@@ -33,7 +31,6 @@ def sweep_all_metrics(
     positions: Sequence[str],
     progress: Callable[[int, int], None] | None = None,
 ) -> dict[str, torch.Tensor]:
-    """Patch every head at every position, scoring each run under all three metrics."""
     grids = {
         name: torch.zeros(model.cfg.n_layers, model.cfg.n_heads, len(positions))
         for name in METRICS
@@ -56,7 +53,6 @@ def sweep_all_metrics(
 def collapse_positions(
     grid: torch.Tensor, positions: Sequence[str]
 ) -> tuple[dict[Head, float], dict[Head, str]]:
-    """summarise each head by the position where its effect is largest in absolute value."""
     effects: dict[Head, float] = {}
     best: dict[Head, str] = {}
     for layer in range(grid.shape[0]):
@@ -75,8 +71,6 @@ def rank_stats(ds, logits) -> dict[str, float]:
 
 @dataclass
 class SchemeRun:
-    """One scheme's discovery sweep: the grids, the collapsed effects, the baselines."""
-
     scheme: str
     n_prompts: int
     clean: float
@@ -114,8 +108,6 @@ class SchemeRun:
 
 @dataclass
 class Discovery:
-    """multi-scheme discovery for one task: every scheme's run, plus the comparison."""
-
     task: str
     threshold: float
     primary: str
@@ -143,7 +135,6 @@ def discover(
     progress: Callable[[int, int], None] | None = None,
     announce: Callable[[str], None] | None = None,
 ) -> Discovery:
-    """Run activation-patching discovery under every registered scheme, then compare."""
     say = announce or (lambda _text: None)
     result = Discovery(task=task.name, threshold=threshold, primary=task.primary_scheme)
 
@@ -201,7 +192,6 @@ def discover(
 
 
 def agreement_rows(report: AgreementReport, classify: Callable[[Head], str | None]) -> list[dict]:
-    """flatten a report to CSV rows, annotating each head with a published class."""
     rows = []
     for verdict in report.verdicts:
         row = {
@@ -219,8 +209,6 @@ def agreement_rows(report: AgreementReport, classify: Callable[[Head], str | Non
 def as_head_effects(effects: Mapping[Head, float]) -> dict[str, float]:
     return {f"{l}.{h}": v for (l, h), v in effects.items()}
 
-
-# phase 9, a discovery criterion in each scheme's own unitsts
 
 NULL_QUANTILE = 0.99
 SIGNIFICANT_FIGURES = 2
@@ -247,7 +235,6 @@ def null_floor(
     sigfigs: int = SIGNIFICANT_FIGURES,
     progress: Callable[[int, int], None] | None = None,
 ) -> dict:
-    """how much apparent recovery this scheme manufactures from a mismatched activation."""
     ds = task.dataset(model, n=n, corruption=scheme, seed=seed)
     baseline, _, _ = baseline_for(model, ds)
     cache, _ = clean_cache_for(model, ds)
@@ -286,7 +273,6 @@ def calibrate(
     progress: Callable[[int, int], None] | None = None,
     announce: Callable[[str], None] | None = None,
 ) -> dict[str, dict]:
-    """`null_floor` for every registered discovery scheme."""
     say = announce or (lambda _text: None)
     floors: dict[str, dict] = {}
     for scheme in task.discovery_schemes:

@@ -58,6 +58,16 @@ first time in twelve phases i got a signal that disagreed with magnitude and
 matched the answer key. thats only one circuit and six heads, i havent tested
 it on the other two
 
+## scrubbing sources
+
+`causal_interp/scrubbing.py` follows Chan et al. 2022, linked above. replacement
+prompts use the same template as the clean row, `r % 8`, with different names,
+places and objects. the code checks that lengths and named token positions
+match before copying activations by absolute token index
+
+`keep_mask` has shape `(n_layers, b, seq, n_heads)`. True keeps that activation
+unchanged during the scrub
+
 ## gotchas
 
 - all 576 head-position cells before S2 come out zero under `s2_swap`. identical inputs
