@@ -1,47 +1,42 @@
-# causal-interp, twelve phases, one retrospective
+# causal-interp, twelve phases
 
-what twelve pre-registered phases actually established, what they didnt, and what the
-failures have in common. every number is quoted from a committed phase report in
-[`results/`](results/). nothing re-derived, nothing rounded from memory, and the report
-each figure came from is named.
+I ran twelve pre-registered phases to see what this pipeline can actually find. This is
+what held up, what didnt, and where it kept failing. Numbers below come from the committed
+reports in [`results/`](results/), with the report linked next to each result.
 
-start here, probably. if you then want the evidence for any single claim, the phase reports
-are where it lives.
+The reports have the protocols and raw details if you want to check any of it.
 
 ---
 
 ## the short answer
 
-This set out to build a system that discovers and causally validates mechanisms in
-neural networks. Aimed eventually at models more capable than the people checking them.
-twelve phases in, it splits pretty cleanly:
+I started out trying to build a system that discovers and causally tests mechanisms in
+neural networks, eventually including models too capable to check by hand. Twelve phases
+later, the split is pretty clear:
 
-anything that can be settled by measuring a magnitude is mechanized, anything that needs
-relevance judged still needs a human or an answer key
+If a question comes down to measuring a magnitude, the pipeline can do it. If it needs a
+judgment about relevance, it still needs a person or an answer key.
 
-Finding a circuit, ranking components, working out where a head reads its input, replacing
-the answer key in the metric, transferring to a new task, transferring to a new model,
-building the task itself out of example sentences. all of that runs now without being told
-the answer, checked against three published circuits in two models.
+It can find a circuit, rank components, locate where a head reads its input, use a metric
+that doesnt need the answer key, and transfer to another task or model. I also tried
+building a task from example sentences. Those steps ran without giving the pipeline the
+answer, across three published circuits in two models.
 
-deciding which experiment to believe does not. four separate goes at it, phases 9 and
-10, the scheme-level re-analysis, and phase 11. four directions, same wall every time.
-thats the open problem. and its exactly the one that matters for the scalable-oversight
-framing, since "no answer key exists" is the whole defining condition there.
+What it cant do is tell me which experiment to believe. I tried four ways to get at that
+in phases 9 and 10, the scheme-level re-analysis, and phase 11. They all hit the same
+problem. That matters for the scalable-oversight idea because it only helps when there
+isnt an answer key to check against.
 
-phase 11 changed the character of the conclusion rather than adding a fourth data point.
-It resampled both circuits ten times. the findings already replicate essentially perfectly,
-and dividing an effect by its own replication spread makes discovery significantly worse,
-cuz that spread scales with the effect. so whats left isnt a statistical problem. not
-sampling noise, not too little data, not a missing confidence interval. §2 and §5 are
-updated to match, and the recommendation is blunt now: treat this as an open problem
-instead of hunting around for a fix inside the current pipeline.
+In phase 11 I resampled both circuits ten times. The findings already replicate almost
+perfectly. Dividing an effect by its own replication spread made discovery worse because
+that spread grows with the effect. So far, this doesnt look like a sampling-noise or
+confidence-interval problem. I updated sections 2 and 5 to match, and stopped looking for
+a fix inside this pipeline.
 
-phase 12 then took the one exit phase 11 left open and tried a method from outside the
-paradigm, causal scrubbing. the published IOI circuit passes its own scrub, and the per-head
-signal that falls out is near-orthogonal to activation patching while still separating
-published heads at AUC 0.799. the recommendation stands anyway, sufficiency under resample
-ablation turns out to be a property most head sets have. §2 and §5 carry the detail.
+Phase 12 tried the remaining option, causal scrubbing. The published IOI circuit passes
+its scrub, and the per-head signal is almost unrelated to activation patching while still
+separating the published heads at AUC 0.799. The broader conclusion didnt change: most
+head sets pass the resample-ablation sufficiency test. Sections 2 and 5 have the details.
 
 ---
 

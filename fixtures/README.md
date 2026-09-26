@@ -1,24 +1,20 @@
-# fixtures, the human-authored input to phase 10
+# phase 10 fixtures
 
-everything in this directory was typed by a person, which is more or less the point
-of it.
+I wrote the prompts in this directory by hand. Phase 10 tests how much task setup can be
+automated from a one-sentence hunch and a few examples, so these are the human part of the
+input.
 
-phase 10 asks how much of task construction can be mechanized starting from a
-one-sentence behavioural hunch plus a handful of example prompts. these files are
-that handful. They get committed **before** any phase 10 code exists, in the same
-commit as [`../results/PHASE10_PLAN.md`](../results/PHASE10_PLAN.md), so the human
-contribution to the phase can be counted rather than described. it's the number of
-lines below, basically.
+I committed them with [`../results/PHASE10_PLAN.md`](../results/PHASE10_PLAN.md), before
+the phase 10 code existed. That makes the amount of human input countable: its the lines
+in these files.
 
-each file is one prompt per line, no answers, no annotations, no slot markup. a
-line is a complete prompt: the text the model sees, cut immediately before the
-token the behaviour is supposed to produce.
+Each file has one prompt per line. No answers, annotations or slot markup. The prompt
+ends right before the token the model is supposed to produce.
 
-they were written naturally and arent filtered. No line was checked against the
-tokenizer, or against `causal_interp/greater_than.py`'s word lists, or against
-whether the model actually performs the behaviour on it. doing any of that would be
-hand-construction of the exact kind this phase is trying to measure, so the plan
-pre-registers that the induction reports how many lines it had to drop instead.
+I didnt filter the examples. I didnt check them against the tokenizer, the word lists in
+`causal_interp/greater_than.py`, or whether the model gets them right. Doing that would
+mean hand-building the task this phase is supposed to automate. The plan instead counts
+how many examples the induction step has to drop.
 
 | file | hunch it came from | frame |
 |---|---|---|
