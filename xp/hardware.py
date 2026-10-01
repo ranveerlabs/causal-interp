@@ -39,6 +39,20 @@ def foreign(gpu, jobs, own):
     return jobs.get(gpu['uuid'], set()) - set(own)
 
 
+def available(gpus, jobs, selected=None):
+    indices = {g['index'] for g in gpus}
+    if selected is not None and not selected <= indices:
+        raise RuntimeError('unknown GPU index requested')
+    return [g for g in gpus if (selected is None or g['index'] in selected)
+            and not jobs.get(g['uuid'])]
+
+
+def compatible(gpus, info):
+    if len(gpus) != len(info['devices']):
+        raise RuntimeError('GPU inventory changed during torch inspection, restart preflight')
+    return [g for g, d in zip(gpus, info['devices']) if d['capability'] in info['arch_list']]
+
+
 def expected(gpus):
     return len(gpus)==4 and all('P100' in g['name'] and 15000<=g['vram_mib']<=17000 for g in gpus)
 

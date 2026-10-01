@@ -14,7 +14,7 @@ import traceback
 
 from common import BASE, ROOT, TERMINAL, alive, atomic, block_dependencies, connect, failure, git, identity, initialize, plan, preregistered, recover, snapshot, write_json
 from digest import generate
-from hardware import expected, foreign, inventory, processes
+from hardware import available, compatible, expected, foreign, inventory, processes
 
 stopping=False
 
@@ -236,11 +236,9 @@ def launch(args,stack):
     subprocess.run(['nvidia-smi'],check=True,timeout=15)
     gpus=inventory()
     jobs=processes()
-    if args.gpus:
-        selected={int(s) for s in args.gpus.split(',')}
-        if not selected <= {g['index'] for g in gpus}: raise RuntimeError('unknown GPU index requested')
-    else: selected={g['index'] for g in gpus}
-    free=[g for g in gpus if g['index'] in selected and not jobs.get(g['uuid'])]
+    selected={int(s) for s in args.gpus.split(',')} if args.gpus else None
+    free=available(gpus,jobs,selected)
+    print(f'Detected {len(gpus)} GPUs, {len(free)} selected GPUs free of compute workloads',flush=True)
     env=dict(gpus=gpus,compute_processes={k:sorted(v) for k,v in jobs.items()},free=free,
              warning=None if expected(gpus) else 'WARNING: detected hardware differs from 4 x 16 GB Tesla P100',
              git_commit=commit,plan_commit=git('log','-1','--format=%H','--','xp/PLAN.md'),fingerprint=fingerprint)
@@ -260,12 +258,12 @@ def launch(args,stack):
         raise RuntimeError('torch environment check failed: '+info.stdout+info.stderr)
     torch_env=json.loads(info.stdout)
     print('Torch/CUDA environment',json.dumps(torch_env,indent=2),flush=True)
-    free=[g for g,d in zip(free,torch_env['devices']) if d['capability'] in torch_env['arch_list']]
+    free=compatible(free,torch_env)
     env['torch']=torch_env
     env['compatible_free']=free
     write_json(BASE/'environment.json',env)
     jobs=processes()
-    free=[g for g in free if not jobs.get(g['uuid'])]
+    free=available(free,jobs)
     if not free:
         raise RuntimeError('no compatible free GPU remains after environment check')
     source=snapshot(config)
@@ -312,8 +310,13 @@ def launch(args,stack):
     if args.hours and time.monotonic()-started>=args.hours*3600:
         return 0
     jobs=processes()
-    free=[g for g in free if not jobs.get(g['uuid'])]
+    free=available(free,jobs)
     if not free: raise RuntimeError('all GPUs became occupied after reproduction')
+    env['worker_gpus']=free
+    env['worker_count']=len(free)
+    write_json(BASE/'environment.json',env)
+    print(f'Launching {len(free)} GPU workers on detected free, compatible devices',flush=True)
+    print(json.dumps(costs(db,config,len(free),scale),indent=2),flush=True)
     with db: db.execute("INSERT OR REPLACE INTO meta VALUES ('gate',?)",(fingerprint,))
     supervise(db,BASE,config,fingerprint,source,free,started,commit,args.hours,scale=scale)
     return 0

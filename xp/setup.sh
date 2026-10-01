@@ -44,11 +44,12 @@ PY
 import json, os, subprocess, sys
 from pathlib import Path
 sys.path.insert(0, 'xp')
-from hardware import inventory, processes, expected
+from hardware import inventory, processes, expected, available, compatible
 from common import write_json
 cards = inventory()
 jobs = processes()
-free = [g for g in cards if not jobs.get(g['uuid'])]
+free = available(cards, jobs)
+print(f'Detected {len(cards)} GPUs, {len(free)} free of compute workloads')
 print(json.dumps(cards, indent=2))
 warning = None if expected(cards) else 'WARNING: hardware differs from expected 4 x 16 GB Tesla P100'
 if warning:
@@ -62,6 +63,8 @@ print(p.stdout,p.stderr)
 if p.returncode:
     raise SystemExit(p.returncode)
 info = json.loads(p.stdout)
+free = compatible(free, info)
+print(f'{len(free)} free GPUs supported by the installed torch build')
 if info['torch'] != '2.7.1+cu126' or info['cuda'] != '12.6':
     raise SystemExit('pinned torch/CUDA installation changed')
 write_json('xp/setup-environment.json',dict(gpus=cards,warning=warning,torch=info,ready=True))

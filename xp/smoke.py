@@ -17,7 +17,7 @@ import common
 import runner
 import work
 from digest import generate
-from hardware import foreign
+from hardware import available, compatible, foreign, inventory
 from hardware import processes
 from sampling import Scrub
 
@@ -38,6 +38,24 @@ def wait_for(fn,timeout=8):
 
 
 class Smoke(unittest.TestCase):
+    def test_dynamic_gpu_inventory(self):
+        for count in (1,2,4,6):
+            rows=[[str(i*2),f'GPU-{i}','Tesla P100','16384','test'] for i in range(count)]
+            caps=[[f'GPU-{i}','6.0'] for i in range(count)]
+            with patch('hardware.query',side_effect=[rows,caps]):
+                cards=inventory()
+            self.assertEqual(len(cards),count)
+            self.assertEqual(len(available(cards,{})),count)
+            self.assertEqual(len(available(cards,{'GPU-0':{123}})),count-1)
+            self.assertEqual(available(cards,{},selected={0}),[cards[0]])
+            with self.assertRaises(RuntimeError): available(cards,{},selected={999})
+            info=dict(arch_list=['sm_60'],devices=[dict(capability='sm_60') for _ in cards])
+            self.assertEqual(compatible(cards,info),cards)
+            info['devices'][0]['capability']='sm_120'
+            self.assertEqual(compatible(cards,info),cards[1:])
+            info['devices'].pop()
+            with self.assertRaises(RuntimeError): compatible(cards,info)
+
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(prefix='xp-smoke-')
         self.base=Path(self.tmp.name)

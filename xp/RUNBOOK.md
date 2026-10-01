@@ -35,7 +35,10 @@ experiments. There is a ten-second countdown after successful preflight.
 `--hours` includes preflight time. At its deadline, safe in-flight units finish,
 so exit can be later. `--gpus` selects physical nvidia-smi indices. Occupied or
 incompatible cards are excluded. `--yes` skips the countdown. No arguments are
-required. Every worker uses one GPU and fp32. Foreign compute causes xp to yield
+required. Every startup queries nvidia-smi for the current inventory and compute
+processes. Worker count follows the detected free, compatible cards, with no fixed
+GPU count. The four-P100 expectation only produces a warning. Every worker uses
+one GPU and fp32. Foreign compute causes xp to yield
 its own worker. If all GPUs are released, pending work waits for your next run.
 
 Detach with Ctrl-b, then d. Disconnect SSH normally. Reconnect and inspect:
