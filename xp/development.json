@@ -1,0 +1,8 @@
+{
+  "real_experiments_run": false,
+  "cpu_smoke": "13 passed",
+  "rtx_smoke": "13 passed, tiny fp32 driver kernels",
+  "reproduction": "simulated PASS/failure only",
+  "p100": "not verified",
+  "hardware": "RTX 5060 Laptop, 8151 MiB, driver 615.71.09"
+}

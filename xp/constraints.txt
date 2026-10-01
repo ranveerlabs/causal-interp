@@ -1,0 +1,4 @@
+torch==2.7.1+cu126
+transformer_lens==3.7.1
+numpy==2.2.6
+scipy==1.15.3

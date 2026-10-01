@@ -93,11 +93,15 @@ one-sided Student t test across 128 class means, df 127. PASS requires a valid a
 R >= 0.8, and Bonferroni p < 0.05. An upper one-sided simultaneous t bound below zero
 is FAILURE. All other cases are INCONCLUSIVE. Zero variance gives p 0 only for a
 strictly positive margin, p 1 for a negative margin, and p 0.5 for zero.
+Only PASS rejects a confirmatory null. The FAILURE bound is a descriptive
+non-preservation diagnostic, not an additional family-controlled negative test.
 Approximate t inference depends on class sampling and distributional regularity.
 The finite donor pool couples classes, so coverage is approximate, not guaranteed.
 
-The three published sets predict PASS directionally. Other candidate preservation
-predictions are unspecified, not invented after results. IOI recovered comparisons
+The three published sets predict PASS directionally. For each of the 28 other
+candidates, the prediction is the operational null: no demonstrated preservation
+under the registered criterion. This predicts a non-PASS decision, not proof that
+its population effect is zero. These predictions remain fixed even if conservative. IOI recovered comparisons
 require published IOI PASS. Cross-task candidates likewise require their own
 published PASS. Any non-PASS gate blocks dependents, with no criterion adjustment.
 The IOI robust and dependent sets use Phase 9's stored shared-0.02 reconstruction
